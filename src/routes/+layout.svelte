@@ -5,13 +5,24 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import { page } from '$app/stores';
 	import { loadSettings } from '$lib/stores/settings';
   	// Icons
 	import { House, MessageSquareText, FileSpreadsheet, Cog } from '@lucide/svelte';
 
-  // State
+  // State - derive navigation value from current route
     let value = $state('home');
 	let { children } = $props();
+
+	// Update navigation value when route changes
+	$effect(() => {
+		if ($page.route.id) {
+			const routePath = $page.route.id.replace('/[', '').replace(']', '');
+			// Extract the route segment (home, data, message, settings)
+			const segment = routePath.split('/')[1] || 'home';
+			value = segment;
+		}
+	});
 
   // Handlers
   const handleClick = (newValue: string) => {
