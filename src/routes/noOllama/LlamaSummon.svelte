@@ -11,8 +11,12 @@
 	let steps = [
 		"Downloading llama3 model...",
 		"Plugging in Charles...", 
-		"Tidying up...",
+		"Doing some black magic...",
+		"Checking the fridge for food (again)...",
+		"Teaching Llama to love Charles...",
 	]
+	let stepCount = 0;
+	let interval : number = 0;
 
 	// Listen for progress updates
 	onMount(async () => {
@@ -21,6 +25,7 @@
 			status = progress < 100 ? "Downloading llama3 model..." : "Installation complete!";
 			if (progress >= 100) {
 				isInstalling = false;
+				clearInterval(interval);
 			}
 		});
 	});
@@ -29,6 +34,12 @@
 		isInstalling = true;
 		status = "Starting install...";
 		progress = 0;
+		interval = setInterval(() => {
+			if (isInstalling && progress < 95) {
+				stepCount = (stepCount + 1) % steps.length;
+				status = steps[stepCount];
+			}
+		}, 15000); // change status every 15 seconds
 		try {
 			await invoke("install_model");
 		} catch (err) {

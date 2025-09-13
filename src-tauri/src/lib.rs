@@ -4,6 +4,8 @@ use tauri::{AppHandle, Manager};
 use std::process::Command;
 use std::path::PathBuf;
 use tauri::Emitter;
+use tauri::path::BaseDirectory;
+
 
 fn find_ollama_path() -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
@@ -182,11 +184,29 @@ async fn install_model(app_handle: tauri::AppHandle) -> Result<(), String> {
     use tokio::io::{AsyncBufReadExt, BufReader};
     use regex::Regex;
 
+    // 1. Find Ollama
     let ollama_path = find_ollama_path().ok_or("Ollama not found")?;
 
+    // 2. Where your Modelfile lives (adjust if needed)
+    let modelfile_path = app_handle
+        .path()
+        .resolve("resources/Modelfile", BaseDirectory::Resource)
+         .map_err(|_| "Modelfile not found in bundle")?;
+
+
+    if !modelfile_path.exists() {
+        return Err(format!(
+            "Modelfile not found at {}",
+            modelfile_path.display()
+        ));
+    }
+
+    // 3. Run `ollama create charles -f Modelfile`
     let mut child = tokio::process::Command::new(ollama_path)
-        .arg("pull")
-        .arg("llama3:8b")
+        .arg("create")
+        .arg("charles")
+        .arg("-f")
+        .arg(modelfile_path)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
@@ -195,7 +215,7 @@ async fn install_model(app_handle: tauri::AppHandle) -> Result<(), String> {
     let re = Regex::new(r"(\d+)%").unwrap();
     let handle = app_handle.clone();
 
-    // Helper to read both stdout and stderr
+    // 4. Capture and stream stdout + stderr
     let mut tasks = vec![];
 
     if let Some(stdout) = child.stdout.take() {
@@ -244,6 +264,7 @@ async fn install_model(app_handle: tauri::AppHandle) -> Result<(), String> {
         }));
     }
 
+    // 5. Wait for completion
     let status = child.wait().await.map_err(|e| e.to_string())?;
     for t in tasks {
         let _ = t.await;
