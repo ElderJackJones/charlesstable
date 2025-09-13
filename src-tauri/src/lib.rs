@@ -3,6 +3,7 @@ use tauri::{AppHandle, Manager};
 
 use std::process::Command;
 use std::path::PathBuf;
+use tauri::Emitter;
 
 fn find_ollama_path() -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
@@ -145,6 +146,7 @@ pub fn run() {
             is_messenger_window_open,
            check_ollama_installed,
            open_in_chrome,
+           install_model,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -175,12 +177,81 @@ fn open_in_chrome(url: String) -> Result<(), String> {
     Ok(())
 }
 
-// You already have the correct dependencies in your Cargo.toml!
+#[tauri::command]
+async fn install_model(app_handle: tauri::AppHandle) -> Result<(), String> {
+    use tokio::io::{AsyncBufReadExt, BufReader};
+    use regex::Regex;
 
-// src-tauri/Cargo.toml dependencies needed:
-/*
-[dependencies]
-tauri = { version = "1.0", features = ["api-all"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-*/
+    let ollama_path = find_ollama_path().ok_or("Ollama not found")?;
+
+    let mut child = tokio::process::Command::new(ollama_path)
+        .arg("pull")
+        .arg("llama3:8b")
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
+    let re = Regex::new(r"(\d+)%").unwrap();
+    let handle = app_handle.clone();
+
+    // Helper to read both stdout and stderr
+    let mut tasks = vec![];
+
+    if let Some(stdout) = child.stdout.take() {
+        let handle = handle.clone();
+        let re = re.clone();
+        tasks.push(tauri::async_runtime::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            let mut last_percent = 0;
+            while let Ok(Some(line)) = lines.next_line().await {
+                if let Some(caps) = re.captures(&line) {
+                    if let Ok(percent) = caps[1].parse::<u8>() {
+                        if percent > last_percent {
+                            last_percent = percent;
+                            let _ = handle.emit("install-progress", percent);
+                        }
+                    }
+                }
+            }
+            if last_percent < 100 {
+                let _ = handle.emit("install-progress", 100);
+            }
+        }));
+    }
+
+    if let Some(stderr) = child.stderr.take() {
+        let handle = handle.clone();
+        let re = re.clone();
+        tasks.push(tauri::async_runtime::spawn(async move {
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            let mut last_percent = 0;
+            while let Ok(Some(line)) = lines.next_line().await {
+                if let Some(caps) = re.captures(&line) {
+                    if let Ok(percent) = caps[1].parse::<u8>() {
+                        if percent > last_percent {
+                            last_percent = percent;
+                            let _ = handle.emit("install-progress", percent);
+                        }
+                    }
+                }
+            }
+            if last_percent < 100 {
+                let _ = handle.emit("install-progress", 100);
+            }
+        }));
+    }
+
+    let status = child.wait().await.map_err(|e| e.to_string())?;
+    for t in tasks {
+        let _ = t.await;
+    }
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err("Model installation failed".into())
+    }
+}

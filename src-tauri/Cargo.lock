@@ -95,12 +95,14 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "log",
+ "regex",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-log",
  "tauri-plugin-shell",
+ "tokio",
 ]
 
 [[package]]
@@ -3962,6 +3964,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "slab",
  "socket2",
  "windows-sys 0.59.0",
