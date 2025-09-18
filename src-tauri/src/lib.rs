@@ -4,7 +4,6 @@ use tauri::{AppHandle, Manager};
 use std::process::Command;
 use std::path::PathBuf;
 use tauri::Emitter;
-use tauri::path::BaseDirectory;
 
 
 fn find_ollama_path() -> Option<PathBuf> {
@@ -148,7 +147,7 @@ pub fn run() {
             is_messenger_window_open,
            check_ollama_installed,
            open_in_chrome,
-           install_model,
+           install_models,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -180,99 +179,102 @@ fn open_in_chrome(url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn install_model(app_handle: tauri::AppHandle) -> Result<(), String> {
+async fn install_models(app_handle: tauri::AppHandle) -> Result<(), String> {
     use tokio::io::{AsyncBufReadExt, BufReader};
     use regex::Regex;
 
     // 1. Find Ollama
     let ollama_path = find_ollama_path().ok_or("Ollama not found")?;
 
-    // 2. Where your Modelfile lives (adjust if needed)
-    let modelfile_path = app_handle
-        .path()
-        .resolve("resources/Modelfile", BaseDirectory::Resource)
-         .map_err(|_| "Modelfile not found in bundle")?;
-
-
-    if !modelfile_path.exists() {
-        return Err(format!(
-            "Modelfile not found at {}",
-            modelfile_path.display()
-        ));
-    }
-
-    // 3. Run `ollama create charles -f Modelfile`
-    let mut child = tokio::process::Command::new(ollama_path)
-        .arg("create")
-        .arg("charles")
-        .arg("-f")
-        .arg(modelfile_path)
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| e.to_string())?;
+    // 2. Map model names to their Modelfiles
+    let models = vec![
+        ("charlesJest", "resources/jestFile"),
+        ("charlesSage", "resources/sageFile"),
+        ("charlesExpert", "resources/expertFile"),
+    ];
 
     let re = Regex::new(r"(\d+)%").unwrap();
     let handle = app_handle.clone();
 
-    // 4. Capture and stream stdout + stderr
-    let mut tasks = vec![];
+    for (model_name, file_path) in models {
+        let modelfile = app_handle
+            .path()
+            .resolve(file_path, tauri::path::BaseDirectory::Resource)
+            .map_err(|_| format!("Modelfile {} not found in bundle", file_path))?;
 
-    if let Some(stdout) = child.stdout.take() {
-        let handle = handle.clone();
-        let re = re.clone();
-        tasks.push(tauri::async_runtime::spawn(async move {
-            let reader = BufReader::new(stdout);
-            let mut lines = reader.lines();
-            let mut last_percent = 0;
-            while let Ok(Some(line)) = lines.next_line().await {
-                if let Some(caps) = re.captures(&line) {
-                    if let Ok(percent) = caps[1].parse::<u8>() {
-                        if percent > last_percent {
-                            last_percent = percent;
-                            let _ = handle.emit("install-progress", percent);
+        if !modelfile.exists() {
+            return Err(format!("Modelfile not found at {}", modelfile.display()));
+        }
+
+        let mut child = tokio::process::Command::new(&ollama_path)
+            .arg("create")
+            .arg(model_name)
+            .arg("-f")
+            .arg(modelfile)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| e.to_string())?;
+
+        let mut tasks = vec![];
+
+        // Stream stdout
+        if let Some(stdout) = child.stdout.take() {
+            let handle = handle.clone();
+            let re = re.clone();
+            tasks.push(tauri::async_runtime::spawn(async move {
+                let reader = BufReader::new(stdout);
+                let mut lines = reader.lines();
+                let mut last_percent = 0;
+                while let Ok(Some(line)) = lines.next_line().await {
+                    if let Some(caps) = re.captures(&line) {
+                        if let Ok(percent) = caps[1].parse::<u8>() {
+                            if percent > last_percent {
+                                last_percent = percent;
+                                let _ = handle.emit("install-progress", percent);
+                            }
                         }
                     }
                 }
-            }
-            if last_percent < 100 {
-                let _ = handle.emit("install-progress", 100);
-            }
-        }));
-    }
+                if last_percent < 100 {
+                    let _ = handle.emit("install-progress", 100);
+                }
+            }));
+        }
 
-    if let Some(stderr) = child.stderr.take() {
-        let handle = handle.clone();
-        let re = re.clone();
-        tasks.push(tauri::async_runtime::spawn(async move {
-            let reader = BufReader::new(stderr);
-            let mut lines = reader.lines();
-            let mut last_percent = 0;
-            while let Ok(Some(line)) = lines.next_line().await {
-                if let Some(caps) = re.captures(&line) {
-                    if let Ok(percent) = caps[1].parse::<u8>() {
-                        if percent > last_percent {
-                            last_percent = percent;
-                            let _ = handle.emit("install-progress", percent);
+        // Stream stderr
+        if let Some(stderr) = child.stderr.take() {
+            let handle = handle.clone();
+            let re = re.clone();
+            tasks.push(tauri::async_runtime::spawn(async move {
+                let reader = BufReader::new(stderr);
+                let mut lines = reader.lines();
+                let mut last_percent = 0;
+                while let Ok(Some(line)) = lines.next_line().await {
+                    if let Some(caps) = re.captures(&line) {
+                        if let Ok(percent) = caps[1].parse::<u8>() {
+                            if percent > last_percent {
+                                last_percent = percent;
+                                let _ = handle.emit("install-progress", percent);
+                            }
                         }
                     }
                 }
-            }
-            if last_percent < 100 {
-                let _ = handle.emit("install-progress", 100);
-            }
-        }));
+                if last_percent < 100 {
+                    let _ = handle.emit("install-progress", 100);
+                }
+            }));
+        }
+
+        let status = child.wait().await.map_err(|e| e.to_string())?;
+        for t in tasks {
+            let _ = t.await;
+        }
+
+        if !status.success() {
+            return Err(format!("Installation of {} failed", model_name));
+        }
     }
 
-    // 5. Wait for completion
-    let status = child.wait().await.map_err(|e| e.to_string())?;
-    for t in tasks {
-        let _ = t.await;
-    }
-
-    if status.success() {
-        Ok(())
-    } else {
-        Err("Model installation failed".into())
-    }
+    Ok(())
 }

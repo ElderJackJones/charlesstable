@@ -25,7 +25,9 @@
   },
   "bundle": {
     "resources": [
-      "resources/Modelfile"
+      "resources/expertFile",
+      "resources/jestFile",
+      "resources/sageFile"
     ],
     "active": true,
     "targets": "all",
