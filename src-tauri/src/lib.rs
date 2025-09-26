@@ -196,7 +196,7 @@ async fn install_models(app_handle: tauri::AppHandle) -> Result<(), String> {
     let re = Regex::new(r"(\d+)%").unwrap();
     let handle = app_handle.clone();
 
-    for (model_name, file_path) in models {
+    for (i, (model_name, file_path)) in models.iter().enumerate() {
         let modelfile = app_handle
             .path()
             .resolve(file_path, tauri::path::BaseDirectory::Resource)
@@ -206,75 +206,87 @@ async fn install_models(app_handle: tauri::AppHandle) -> Result<(), String> {
             return Err(format!("Modelfile not found at {}", modelfile.display()));
         }
 
-        let mut child = tokio::process::Command::new(&ollama_path)
-            .arg("create")
-            .arg(model_name)
-            .arg("-f")
-            .arg(modelfile)
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        // Build command
+        let mut cmd = tokio::process::Command::new(&ollama_path);
+        cmd.arg("create").arg(model_name).arg("-f").arg(modelfile);
 
-        let mut tasks = vec![];
+        // Attach stdout/stderr only for the first model
+        if i == 0 {
+            cmd.stdout(std::process::Stdio::piped())
+               .stderr(std::process::Stdio::piped());
+        }
 
-        // Stream stdout
-        if let Some(stdout) = child.stdout.take() {
-            let handle = handle.clone();
-            let re = re.clone();
-            tasks.push(tauri::async_runtime::spawn(async move {
-                let reader = BufReader::new(stdout);
-                let mut lines = reader.lines();
-                let mut last_percent = 0;
-                while let Ok(Some(line)) = lines.next_line().await {
-                    if let Some(caps) = re.captures(&line) {
-                        if let Ok(percent) = caps[1].parse::<u8>() {
-                            if percent > last_percent {
-                                last_percent = percent;
-                                let _ = handle.emit("install-progress", percent);
+        let mut child = cmd.spawn().map_err(|e| e.to_string())?;
+
+        // Progress handling only for the first model
+        if i == 0 {
+            let mut tasks = vec![];
+
+            if let Some(stdout) = child.stdout.take() {
+                let handle = handle.clone();
+                let re = re.clone();
+                tasks.push(tauri::async_runtime::spawn(async move {
+                    let reader = BufReader::new(stdout);
+                    let mut lines = reader.lines();
+                    let mut last_percent = 0;
+                    while let Ok(Some(line)) = lines.next_line().await {
+                        if let Some(caps) = re.captures(&line) {
+                            if let Ok(percent) = caps[1].parse::<u8>() {
+                                if percent > last_percent {
+                                    last_percent = percent;
+                                    let _ = handle.emit("install-progress", percent);
+                                }
                             }
                         }
                     }
-                }
-                if last_percent < 100 {
-                    let _ = handle.emit("install-progress", 100);
-                }
-            }));
-        }
+                    if last_percent < 100 {
+                        let _ = handle.emit("install-progress", 100);
+                    }
+                }));
+            }
 
-        // Stream stderr
-        if let Some(stderr) = child.stderr.take() {
-            let handle = handle.clone();
-            let re = re.clone();
-            tasks.push(tauri::async_runtime::spawn(async move {
-                let reader = BufReader::new(stderr);
-                let mut lines = reader.lines();
-                let mut last_percent = 0;
-                while let Ok(Some(line)) = lines.next_line().await {
-                    if let Some(caps) = re.captures(&line) {
-                        if let Ok(percent) = caps[1].parse::<u8>() {
-                            if percent > last_percent {
-                                last_percent = percent;
-                                let _ = handle.emit("install-progress", percent);
+            if let Some(stderr) = child.stderr.take() {
+                let handle = handle.clone();
+                let re = re.clone();
+                tasks.push(tauri::async_runtime::spawn(async move {
+                    let reader = BufReader::new(stderr);
+                    let mut lines = reader.lines();
+                    let mut last_percent = 0;
+                    while let Ok(Some(line)) = lines.next_line().await {
+                        if let Some(caps) = re.captures(&line) {
+                            if let Ok(percent) = caps[1].parse::<u8>() {
+                                if percent > last_percent {
+                                    last_percent = percent;
+                                    let _ = handle.emit("install-progress", percent);
+                                }
                             }
                         }
                     }
-                }
-                if last_percent < 100 {
-                    let _ = handle.emit("install-progress", 100);
-                }
-            }));
-        }
+                    if last_percent < 100 {
+                        let _ = handle.emit("install-progress", 100);
+                    }
+                }));
+            }
 
-        let status = child.wait().await.map_err(|e| e.to_string())?;
-        for t in tasks {
-            let _ = t.await;
-        }
+            let status = child.wait().await.map_err(|e| e.to_string())?;
+            for t in tasks {
+                let _ = t.await;
+            }
 
-        if !status.success() {
-            return Err(format!("Installation of {} failed", model_name));
+            if !status.success() {
+                return Err(format!("Installation of {} failed", model_name));
+            }
+        } else {
+            // Silent install for other models
+            let status = child.wait().await.map_err(|e| e.to_string())?;
+            if !status.success() {
+                return Err(format!("Installation of {} failed", model_name));
+            }
         }
     }
+
+    // Let UI know everything finished
+    let _ = app_handle.emit("install-complete", ());
 
     Ok(())
 }

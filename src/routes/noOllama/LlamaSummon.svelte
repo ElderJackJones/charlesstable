@@ -41,7 +41,7 @@
 			}
 		}, 15000); // change status every 15 seconds
 		try {
-			await invoke("install_model");
+			await invoke("install_models");
 		} catch (err) {
 			console.error("Install failed", err);
 			status = "Installation failed. Please try again.";
