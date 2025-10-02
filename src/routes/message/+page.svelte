@@ -1,80 +1,65 @@
 <script lang="ts">
-	let includeDay = false;
-	let includeSeason = false;
-	let includeInstructions = false;
-	let selectedModel: "Sage" | "Jest" = "Sage";
+  import { Send } from "@lucide/svelte";
+
+  let messages: { sender: "user" | "bot"; text: string }[] = [
+    { sender: "bot", text: "Hello! How can I help you today?" }
+  ];
+
+  let userInput = "";
+
+  function sendMessage() {
+    if (userInput.trim() === "") return;
+    messages = [...messages, { sender: "user", text: userInput }];
+    // Placeholder bot reply
+    setTimeout(() => {
+      messages = [...messages, { sender: "bot", text: `You said: ${userInput}` }];
+    }, 500);
+    userInput = "";
+  }
 </script>
 
-<div class="w-full h-full p-4 grid gap-4
-	grid-cols-1 md:grid-cols-2 lg:grid-cols-3
-	auto-rows-fr
-	[grid-auto-flow:dense]">
+<div class="w-full h-screen flex flex-col">
+  <!-- Chat container -->
+  <div class="flex flex-col flex-grow m-4 shadow-xl rounded-2xl overflow-hidden bg-surface-50 dark:bg-surface-800">
+    <div class="flex flex-col flex-grow p-4 overflow-y-auto space-y-3">
+      {#each messages as msg}
+        <div class="flex {msg.sender === 'user' ? 'justify-end' : 'justify-start'}">
+          <div class="max-w-[75%] px-4 py-2 rounded-2xl text-sm shadow-md
+            {msg.sender === 'user'
+              ? 'bg-primary-500 text-white rounded-br-none'
+              : 'bg-surface-200 dark:bg-surface-700 text-on-surface rounded-bl-none'}">
+            {msg.text}
+          </div>
+        </div>
+      {/each}
+    </div>
 
-	<!-- Charles Settings -->
-	<div class="preset-filled-surface-100-900 card p-4 flex flex-col">
-		<h2 class="font-bold mb-4 text-lg">Charles Settings</h2>
-		<div class="flex-1 flex flex-col gap-4">
-
-			<!-- Checkboxes grid -->
-			<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-				<label class="flex items-center gap-2">
-					<input type="checkbox" class="checkbox" bind:checked={includeDay} />
-					<span>Include Day</span>
-				</label>
-				<label class="flex items-center gap-2">
-					<input type="checkbox" class="checkbox" bind:checked={includeSeason} />
-					<span>Include Season</span>
-				</label>
-				<label class="flex items-center gap-2">
-					<input type="checkbox" class="checkbox" bind:checked={includeInstructions} />
-					<span>Include Additional Instructions</span>
-				</label>
-			</div>
-
-			<!-- Model Dropdown -->
-			<div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 mt-2">
-				<span class="font-medium mb-1 sm:mb-0">Select Model:</span>
-				<select bind:value={selectedModel} class="select w-full sm:w-auto p-2 rounded border">
-					<option value="Sage">Sage</option>
-					<option value="Jest">Jest</option>
-				</select>
-			</div>
-
-		</div>
-	</div>
-
-	<!-- Messenger Control -->
-	<div class="preset-filled-surface-100-900 card p-4 flex flex-col">
-		<h2 class="font-bold mb-2">Messenger Control</h2>
-		<div class="flex-1 flex flex-col gap-2">
-			<div class="skeleton h-6 w-2/3"></div>
-			<div class="skeleton h-10 w-24"></div>
-		</div>
-	</div>
-
-	<!-- User Progress -->
-	<div class="md:col-span-2 lg:col-span-1 preset-filled-surface-100-900 card p-4 flex flex-col">
-		<h2 class="font-bold mb-2">Progress</h2>
-		<div class="flex-1 flex flex-col gap-2">
-			<div class="skeleton h-6 w-3/4"></div>
-			<div class="skeleton h-6 w-1/2"></div>
-			<div class="skeleton h-8 w-28 mt-auto"></div>
-		</div>
-	</div>
-
-	<!-- Chat with Charles (full width) -->
-	<div class="preset-filled-surface-100-900 card p-4 flex flex-col md:col-span-2 lg:col-span-3">
-		<h2 class="font-bold mb-2">Chat with Charles</h2>
-		<div class="flex-1 flex flex-col gap-2">
-			<div class="flex-1 grid gap-2">
-				<div class="skeleton h-6 w-2/3"></div>
-				<div class="skeleton h-6 w-1/2 ml-auto"></div>
-				<div class="skeleton h-6 w-3/4"></div>
-			</div>
-			<div class="flex gap-2">
-				<div class="skeleton h-10 flex-1"></div>
-				<div class="skeleton h-10 w-20"></div>
-			</div>
-		</div>
-	</div>
+    <!-- Input bar -->
+    <div class="flex items-center border-t border-surface-200 dark:border-surface-700 p-3 gap-2">
+      <input
+        type="text"
+        placeholder="Type your message..."
+        bind:value={userInput}
+        on:keydown={(e) => e.key === 'Enter' && sendMessage()}
+        class="flex-grow rounded-lg px-3 py-2 bg-surface-100 dark:bg-surface-900 text-on-surface outline-none border border-surface-300 dark:border-surface-600 focus:ring-2 focus:ring-primary-400"
+      />
+      <button
+        on:click={sendMessage}
+        class="p-2 rounded-full bg-primary-500 text-white hover:bg-primary-600 shadow-md btn"
+      >
+        <Send class="w-5 h-5" />
+      </button>
+    </div>
+  </div>
 </div>
+
+<style>
+  /* Make chat scroll nice */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+</style>
