@@ -148,6 +148,7 @@ pub fn run() {
            check_ollama_installed,
            open_in_chrome,
            install_models,
+           generate,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -287,6 +288,55 @@ async fn install_models(app_handle: tauri::AppHandle) -> Result<(), String> {
 
     // Let UI know everything finished
     let _ = app_handle.emit("install-complete", ());
+
+    Ok(())
+}
+
+use reqwest;
+use futures_util::StreamExt;
+
+#[tauri::command]
+async fn generate( app_handle: tauri::AppHandle, prompt: String, model: String) -> Result<(), String> {
+
+    let handle = app_handle.clone();
+    let body = serde_json::json!({
+        "model": model,
+        "prompt": prompt,
+        "stream": true
+    });
+
+    let client = reqwest::Client::new();
+    let res = client.post("http://localhost:11434/api/generate")
+        .body(prompt)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let mut stream = res.bytes_stream();
+    while let Some(item) = stream.next().await {
+        let chunk = item.map_err(|e| e.to_string())?;
+        let text = String::from_utf8_lossy(&chunk);
+        for line in text.lines() {
+            if line.trim().is_empty() {
+                continue;
+            }
+
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+                if let Some(done) = json.get("done").and_then(|d| d.as_bool()) {
+                    if done {
+                        // Stream finished
+                        break;
+                    }
+                }
+
+                if let Some(resp) = json.get("response").and_then(|r| r.as_str()) {
+                    // Here you can emit the response to the frontend
+                    handle.emit("ollama-chunk", resp).map_err(|e| e.to_string())?;
+                }
+            }
+        }
+    }
 
     Ok(())
 }
