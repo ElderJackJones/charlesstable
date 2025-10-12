@@ -296,8 +296,8 @@ use reqwest;
 use futures_util::StreamExt;
 
 #[tauri::command]
-async fn generate( app_handle: tauri::AppHandle, prompt: String, model: String) -> Result<(), String> {
-
+async fn generate( app_handle: tauri::AppHandle, prompt: String, model: String, id: i32) -> Result<(), String> {
+    println!("command recieved for generate");
     let handle = app_handle.clone();
     let body = serde_json::json!({
         "model": model,
@@ -332,11 +332,15 @@ async fn generate( app_handle: tauri::AppHandle, prompt: String, model: String) 
 
                 if let Some(resp) = json.get("response").and_then(|r| r.as_str()) {
                     // Here you can emit the response to the frontend
-                    handle.emit("ollama-chunk", resp).map_err(|e| e.to_string())?;
+                    handle.emit(&format!("chunk-{}", id), resp).map_err(|e| e.to_string())?;
                 }
             }
         }
     }
+
+     handle
+        .emit(&format!("finish-{}", id), ())
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
