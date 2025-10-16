@@ -1,10 +1,16 @@
 <script lang="ts">
-  import { Send, LoaderCircle } from "@lucide/svelte";
+  import { Send } from "@lucide/svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { afterUpdate } from "svelte";
 
-  let messages: { id: number; sender: "user" | "bot"; text: string, loading?: boolean }[] = [
+  let messages: { 
+    id: number; 
+    sender: "user" | "bot"; 
+    text: string; 
+    loading?: boolean;
+    options?: { label: string; value: string }[];
+  }[] = [
     { id: 0, sender: "bot", text: "Hello! How can I help you today?" }
   ];
 
@@ -12,45 +18,35 @@
   let nextId = 1;
   let scroller: HTMLDivElement | null = null;
 
- async function sendMessage() {
-  const text = userInput.trim();
-  if (!text) return;
+  async function sendMessage() {
+    const text = userInput.trim();
+    if (!text) return;
 
-  // append user message
-  messages = [...messages, { id: nextId++, sender: "user", text }];
+    messages = [...messages, { id: nextId++, sender: "user", text }];
+    userInput = "";
 
-  // clear the input immediately
-  userInput = "";
+    const botResponseId = nextId++;
+    messages = [...messages, { id: botResponseId, sender: "bot", text: "", loading: true }];
 
-  // create a placeholder bot message to stream into
-  const botResponseId = nextId++;
-  messages = [...messages, { id: botResponseId, sender: "bot", text: "", loading: true }];
+    const unlistenChunk = await listen<string>(`chunk-${botResponseId}`, event => {
+      const chunk = event.payload;
+      const botMsg = messages.find(m => m.id === botResponseId);
+      if (botMsg) {
+        botMsg.loading = false;
+        botMsg.text += chunk;
+        messages = [...messages];
+      }
+    });
 
-  // listen for streamed chunks
-  const unlistenChunk = await listen<string>(`chunk-${botResponseId}`, event => {
-    const chunk = event.payload;
-    const botMsg = messages.find(m => m.id === botResponseId);
-    if (botMsg) {
-      if (botMsg.loading) botMsg.loading = false;
-      botMsg.text += chunk;
-      messages = [...messages]; // trigger reactivity
-    }
-  });
+    const unlistenFinish = await listen<void>(`finish-${botResponseId}`, () => {
+      unlistenChunk();
+      unlistenFinish();
+    });
 
-  // listen for generation finish
-  const unlistenFinish = await listen<void>(`finish-${botResponseId}`, () => {
-    unlistenChunk();
-    unlistenFinish();
-  });
+    invoke("generate", { prompt: text, model: "charlesJest:latest", id: botResponseId })
+      .catch(err => console.error("Generate failed:", err));
+  }
 
-  // start backend generation
-  invoke("generate", { prompt: text, model: "charlesJest:latest", id: botResponseId })
-    .catch(err => console.error("Generate failed:", err));
-  
-}
-
-
-  // keep scrolled to bottom when messages change
   afterUpdate(() => {
     if (scroller) scroller.scrollTop = scroller.scrollHeight;
   });
@@ -59,20 +55,6 @@
 <div class="w-full h-screen flex flex-col">
   <div class="flex flex-col flex-grow m-4 shadow-xl rounded-2xl overflow-hidden bg-surface-50 dark:bg-surface-800">
     <div bind:this={scroller} class="flex flex-col flex-grow p-4 overflow-y-auto space-y-3 scrollbar-hide">
-      {#each messages as msg (msg.id)}
-                <div class="flex {msg.sender === 'user' ? 'justify-end' : 'justify-start'}">
-            <div
-              class="max-w-[75%] px-4 py-2 rounded-2xl text-sm shadow-md
-              {msg.sender === 'user'
-                ? 'bg-primary-500 text-white rounded-br-none'
-                : 'bg-surface-200 dark:bg-surface-700 text-on-surface rounded-bl-none'} flex items-center gap-2">
-              {#if msg.sender === 'bot' && msg.loading}
-                <LoaderCircle class="w-4 h-4 animate-spin text-primary-500 dark:text-primary-300" />
-              {/if}
-              <span>{msg.text}</span>
-            </div>
-          </div>
-      {/each}
     </div>
 
     <div class="flex items-center border-t border-surface-200 dark:border-surface-700 p-3 gap-2">
