@@ -158,20 +158,18 @@ pub fn run() {
 fn open_in_chrome(url: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     Command::new("cmd")
-        .args(&["/C", "start", "chrome", &url])
+        .args(&["/C", "start", "", &url])
         .spawn()
         .map_err(|e| e.to_string())?;
 
     #[cfg(target_os = "macos")]
     Command::new("open")
-        .arg("-a")
-        .arg("Google Chrome")
         .arg(&url)
         .spawn()
         .map_err(|e| e.to_string())?;
 
     #[cfg(target_os = "linux")]
-    Command::new("google-chrome")
+    Command::new("xdg-open")
         .arg(&url)
         .spawn()
         .map_err(|e| e.to_string())?;

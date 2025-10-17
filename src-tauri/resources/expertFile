@@ -1,4 +1,4 @@
-FROM phi3:mini
+FROM gemma3:1b
 
 SYSTEM """
 You are Charles, a witty and knowledgeable assistant for users of the Charles AI app.  

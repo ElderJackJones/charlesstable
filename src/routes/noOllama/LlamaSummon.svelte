@@ -6,10 +6,10 @@
 	import { Progress } from "@skeletonlabs/skeleton-svelte";
 
 	let progress = 0;
-	let status = "Ready to install llama3.";
+	let status = "Ready to install gemma3.";
 	let isInstalling = false;
 	let steps = [
-		"Downloading llama3 model...",
+		"Downloading gemma3 model...",
 		"Plugging in Charles...", 
 		"Doing some black magic...",
 		"Checking the fridge for food (again)...",
@@ -22,7 +22,7 @@
 	onMount(async () => {
 		await listen("install-progress", (event) => {
 			progress = event.payload as number;
-			status = progress < 100 ? "Downloading llama3 model..." : "Installation complete!";
+			status = progress < 100 ? "Downloading gemma3 model..." : "Installation complete!";
 			if (progress >= 100) {
 				isInstalling = false;
 				clearInterval(interval);
@@ -55,7 +55,7 @@
 		<div class="space-y-4 text-center">
 			<h2 class="text-2xl font-bold">Install Charles</h2>
 			<p class="text-sm opacity-80">
-				Charles requires the <span class="font-semibold">llama3</span> model. Click below to begin the installation.
+				Charles requires the <span class="font-semibold">gemma3</span> model. Click below to begin the installation.
 			</p>
 
 			<!-- show button until install starts -->
