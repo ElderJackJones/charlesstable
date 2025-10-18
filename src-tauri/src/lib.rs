@@ -145,10 +145,11 @@ pub fn run() {
             open_messenger_window,
             close_messenger_window,
             is_messenger_window_open,
-           check_ollama_installed,
-           open_in_chrome,
-           install_models,
-           generate,
+            check_ollama_installed,
+            open_in_chrome,
+            install_models,
+            generate,
+            authchurch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -339,6 +340,77 @@ async fn generate( app_handle: tauri::AppHandle, prompt: String, model: String, 
      handle
         .emit(&format!("finish-{}", id), ())
         .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+
+#[tauri::command]
+async fn authchurch(app: AppHandle) -> Result<(), String> {
+    use tauri::{WebviewWindowBuilder, WebviewUrl, Listener};
+
+    let login_url = "https://referralmanager.churchofjesuschrist.org";
+
+    let window = WebviewWindowBuilder::new(
+        &app,
+        "auth_window",
+        WebviewUrl::External(login_url.parse().unwrap()),
+    )
+    .title("Login")
+    .inner_size(500.0, 700.0)
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    // Inject JS to monitor URL inside the window
+    let js = r#"
+    (function watchUrl() {
+      const prefixes = [
+        "https://referralmanager.churchofjesuschrist.org/dashboard",
+        "https://referralmanager.churchofjesuschrist.org"
+      ];
+      function check() {
+        const u = window.location.href;
+        if (prefixes.some(p => u.startsWith(p))) {
+          window.__TAURI__.event.emit('redirected', { url: u });
+        } else {
+          setTimeout(check, 200);
+        }
+      }
+      check();
+    })();
+    "#;
+
+    window.eval(js).map_err(|e| e.to_string())?;
+
+  
+    let app_h = app.clone();
+    app.listen("redirected", move |event| {
+  if !event.payload().is_empty() {
+    if let Some(win) = app_h.get_webview_window("auth_window") {
+      let js2 = r#"
+        (async () => {
+          try {
+            const resp = await fetch("https://referralmanager.churchofjesuschrist.org/services/auth", {
+              credentials: 'include'
+            });
+            const data = await resp.json();
+            if (data.token) {
+              window.__TAURI__.event.emit('bearerToken', data.token);
+              setTimeout(() => window.close(), 500);
+            } else {
+              window.__TAURI__.event.emit('bearerToken', null);
+            }
+          } catch (e) {
+            window.__TAURI__.event.emit('bearerToken', null);
+          }
+        })()
+      "#;
+      if let Err(e) = win.eval(js2) {
+        eprintln!("Error injecting JS: {:?}", e);
+      }
+    }
+  }
+    });
 
     Ok(())
 }
