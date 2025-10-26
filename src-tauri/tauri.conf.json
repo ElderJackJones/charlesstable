@@ -38,5 +38,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "shell": {
+      "open" : true
+    },
+    "notification": {
+      "all" : true
+    }
   }
 }

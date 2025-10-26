@@ -44,6 +44,8 @@
 	},
 	"dependencies": {
 		"@lucide/svelte": "^0.542.0",
-		"@sveltejs/adapter-static": "^3.0.9"
+		"@sveltejs/adapter-static": "^3.0.9",
+		"@tauri-apps/plugin-notification": "^2.3.1",
+		"@tauri-apps/plugin-shell": "^2.3.1"
 	}
 }

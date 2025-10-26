@@ -48,35 +48,7 @@ fn find_ollama_path() -> Option<PathBuf> {
 
 #[tauri::command]
 fn check_ollama_installed() -> bool {
-    // First attempt: use PATH as-is
-    if try_ollama_version("ollama") {
-        return true;
-    }
-
-    // Otherwise, search common install paths
-    if let Some(ollama_path) = find_ollama_path() {
-        if let Some(parent) = ollama_path.parent() {
-            let parent_str = parent.to_string_lossy().to_string();
-            let mut new_path = std::env::var("PATH").unwrap_or_default();
-
-            // Prepend ollama's directory to PATH
-            new_path = format!("{}{}{}", parent_str, std::path::MAIN_SEPARATOR, new_path);
-            std::env::set_var("PATH", new_path);
-        }
-
-        // Retry using the absolute path
-        return try_ollama_version(ollama_path.to_string_lossy().as_ref());
-    }
-
-    false
-}
-
-fn try_ollama_version(cmd: &str) -> bool {
-    Command::new(cmd)
-        .arg("--version")
-        .output()
-        .map(|out| out.status.success())
-        .unwrap_or(false)
+    which::which("ollama").is_ok()
 }
 
 
