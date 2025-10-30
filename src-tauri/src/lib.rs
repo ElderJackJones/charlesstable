@@ -109,23 +109,6 @@ async fn is_messenger_window_open(app: AppHandle) -> Result<bool, String> {
     Ok(app.get_webview_window("messenger").is_some())
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_log::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![
-            open_messenger_window,
-            close_messenger_window,
-            is_messenger_window_open,
-            check_ollama_installed,
-            open_in_chrome,
-            install_models,
-            generate,
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
-}
-
 #[tauri::command]
 fn open_in_chrome(url: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
@@ -313,4 +296,87 @@ async fn generate( app_handle: tauri::AppHandle, prompt: String, model: String, 
         .map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+#[tauri::command]
+fn download_extension() -> Result<String, String> {
+    use std::fs;
+    use std::fs::File;
+    use std::io;
+    use reqwest::blocking::get;
+    use zip::ZipArchive;
+
+    // 1. Download the zipball
+    let url = "https://github.com/ElderJackJones/CharlesExtension/zipball/main";
+    let response = get(url).map_err(|e| e.to_string())?;
+    let bytes = response.bytes().map_err(|e| e.to_string())?;
+
+    // 2. Get user's Downloads directory
+    let downloads_dir = dirs::download_dir().ok_or("Couldn't find Downloads folder")?;
+    let zip_path = downloads_dir.join("CharlesExtension.zip");
+    let extract_temp = downloads_dir.join("CharlesExtension_temp");
+    let final_dir = downloads_dir.join("CharlesExtension");
+
+    // Clean up any old files
+    let _ = fs::remove_file(&zip_path);
+    let _ = fs::remove_dir_all(&extract_temp);
+    let _ = fs::remove_dir_all(&final_dir);
+
+    // 3. Save zip file
+    fs::write(&zip_path, &bytes).map_err(|e| e.to_string())?;
+
+    // 4. Extract zip into temp directory
+    let file = File::open(&zip_path).map_err(|e| e.to_string())?;
+    let mut zip = ZipArchive::new(file).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&extract_temp).map_err(|e| e.to_string())?;
+    zip.extract(&extract_temp).map_err(|e| e.to_string())?;
+
+    // 5. Find the extracted folder (GitHub adds a single top-level folder)
+    let inner_folder = fs::read_dir(&extract_temp)
+        .map_err(|e| e.to_string())?
+        .filter_map(|e| e.ok())
+        .find(|entry| entry.path().is_dir())
+        .map(|entry| entry.path())
+        .ok_or("No folder found in ZIP")?;
+
+    // 6. Move contents to final "CharlesExtension" folder
+    fs::create_dir_all(&final_dir).map_err(|e| e.to_string())?;
+    for entry in fs::read_dir(&inner_folder).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let dest = final_dir.join(entry.file_name());
+        if entry.path().is_dir() {
+            fs::rename(entry.path(), &dest)
+                .or_else(|_| fs_extra::dir::copy(&entry.path(), &final_dir, &fs_extra::dir::CopyOptions::new())
+                .map(|_| ()))
+                .map_err(|e| e.to_string())?;
+        } else {
+            fs::copy(entry.path(), &dest).map_err(|e| e.to_string())?;
+        }
+    }
+
+    // 7. Cleanup
+    let _ = fs::remove_file(&zip_path);
+    let _ = fs::remove_dir_all(&extract_temp);
+
+    Ok(final_dir.to_string_lossy().into_owned())
+}
+
+// Entry point
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(tauri_plugin_shell::init())
+        .invoke_handler(tauri::generate_handler![
+            open_messenger_window,
+            close_messenger_window,
+            is_messenger_window_open,
+            check_ollama_installed,
+            open_in_chrome,
+            install_models,
+            generate,
+            download_extension,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }

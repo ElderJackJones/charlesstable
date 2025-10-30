@@ -1,13 +1,14 @@
 <script lang="ts">
   import { ArrowLeftIcon, ArrowRightIcon } from '@lucide/svelte';
+  import Authenticate from './Authenticate.svelte';
 
   // Source Data
   const steps = [
-    { label: 'Authentication', description: 'The description of step 1.' },
-    { label: 'Step 2', description: 'The description of step 2.' },
-    { label: 'Step 3', description: 'The description of step 3.' },
-    { label: 'Step 4', description: 'The description of step 4.' },
-    { label: 'Step 5', description: 'The description of step 5.' },
+    { label: 'Authentication', content: Authenticate},
+    { label: 'Step 2', content: Authenticate },
+    { label: 'Step 3', content: Authenticate },
+    { label: 'Step 4', content: Authenticate },
+    { label: 'Step 5', content: Authenticate },
   ];
 
   // Reactive
@@ -62,10 +63,11 @@
     {#each steps as step, i (step)}
       <!-- Filter to current step only -->
       {#if isCurrentStep(i)}
+        {@const Step = steps[currentStep].content}
+
         <!-- Individual steps -->
         <div class="card h-[75vh] bg-surface-100-900 p-10 space-y-2 text-center">
-          <h2 class="h3">{step.label}</h2>
-          <p>{step.description}</p>
+            <Step />
         </div>
       {/if}
     {/each}
