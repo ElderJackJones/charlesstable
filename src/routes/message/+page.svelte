@@ -66,7 +66,7 @@
         {@const Step = steps[currentStep].content}
 
         <!-- Individual steps -->
-        <div class="card h-[75vh] bg-surface-100-900 p-10 space-y-2 text-center">
+        <div class="card max-h-[75vh] overflow-y-auto bg-surface-100-900 p-10 space-y-2 text-center">
             <Step />
         </div>
       {/if}
