@@ -3,6 +3,35 @@
 	import { onMount } from "svelte";
 	import { open } from "@tauri-apps/plugin-shell";
 	import { Check, ClipboardCopy, Save } from "@lucide/svelte";
+	import { listen } from '@tauri-apps/api/event';
+
+	let camelAuthToSnake = async (thing: string) => {
+		const authParsed = await JSON.parse(thing)
+		const authString = JSON.stringify({
+			is_proxy_user: authParsed.isProxyUser,
+			org_name: authParsed.orgName,
+			first_name: authParsed.firstName,
+			last_name: authParsed.lastName,
+			missionary_title: authParsed.missionaryTitle,
+			person_guid: authParsed.personGuid,
+			token: authParsed.token,
+			cookies: authParsed.cookies
+		})
+
+		return authString
+	}
+
+	let trigger = async (authToken: string) => {
+		console.log(authToken)
+		const authClean = await camelAuthToSnake(authToken)
+		await invoke('get_people', {'userobj': authClean})
+	}
+
+	onMount(async () => {
+		const unlisten = await listen<string>('my-event', (event) => {
+		console.log('Event received from Rust:', event.payload);
+	})
+	})
 
 	let downloaded = false;
 	let renderButton = true;
@@ -147,5 +176,6 @@
 		</button>
 	</div>
 </section>
+      <button class="btn" on:click={() => trigger(authToken)}>Ugly</button>
 
 </div>

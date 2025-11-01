@@ -4,6 +4,10 @@ use tauri::{AppHandle, Manager};
 use std::process::Command;
 use std::path::PathBuf;
 use tauri::Emitter;
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, COOKIE, HeaderName};
+use reqwest;
+use futures_util::StreamExt;
+use warp::Filter;
 
 
 fn find_ollama_path() -> Option<PathBuf> {
@@ -245,9 +249,6 @@ async fn install_models(app_handle: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-use reqwest;
-use futures_util::StreamExt;
-
 #[tauri::command]
 async fn generate( app_handle: tauri::AppHandle, prompt: String, model: String, id: i32) -> Result<(), String> {
     println!("command recieved for generate");
@@ -302,7 +303,6 @@ async fn generate( app_handle: tauri::AppHandle, prompt: String, model: String, 
 fn download_extension() -> Result<String, String> {
     use std::fs;
     use std::fs::File;
-    use std::io;
     use reqwest::blocking::get;
     use zip::ZipArchive;
 
@@ -361,6 +361,78 @@ fn download_extension() -> Result<String, String> {
     Ok(final_dir.to_string_lossy().into_owned())
 }
 
+#[tauri::command]
+async fn get_people( app_handle: tauri::AppHandle, userobj: String) -> Result<(), String> {
+    // Take in the user obj and use it to fetch a bunch of people info. Process it then feed it back up to the frontend.
+    use serde::{Serialize, Deserialize};
+    use base64::{Engine as _, engine::general_purpose};
+
+    #[derive(Deserialize, Serialize)]
+    struct User {
+        org_name: String,
+        first_name: String,
+        last_name: String,
+        missionary_title: String,
+        person_guid: String,
+        token: String,
+        cookies: String 
+    }
+
+    #[derive(Deserialize, Serialize, Debug)]
+    #[serde(rename_all = "camelCase")]
+    struct Payload {
+        lds_account_id: String,
+        cmis_id: u64,
+        mission_id: i32,
+        missionary_id: u64,
+        org_id: u64,
+
+        #[serde(default)]
+        full_token: String
+    }
+
+    let current_user: User = serde_json::from_str(&userobj).unwrap();
+    
+    let token_parts: Vec<&str> = current_user.token.split('.').collect();
+    let token_bytes = general_purpose::URL_SAFE_NO_PAD.decode(token_parts[1]).unwrap();
+    let token_parsed: Payload = serde_json::from_slice(&token_bytes).unwrap();
+    let token_final = Payload {
+        full_token : current_user.token.clone(),
+        ..token_parsed
+    };
+    println!("{:?}", &token_final);
+    // Reqwest full person list and then process it
+
+    let mut headers = HeaderMap::new();
+    headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", token_final.full_token)).map_err(|e| e.to_string())?);
+    headers.insert(COOKIE, HeaderValue::from_str(&current_user.cookies).map_err(|e| e.to_string())?);
+    headers.insert(HeaderName::from_static("origin"), HeaderValue::from_static("https://referralmanager.churchofjesuschrist.org"));
+    headers.insert(HeaderName::from_static("referer"), HeaderValue::from_static("https://referralmanager.churchofjesuschrist.org/"));
+    headers.insert(HeaderName::from_static("accept"), HeaderValue::from_static("application/json, text/plain, */*"));
+    headers.insert(HeaderName::from_static("accept-language"), HeaderValue::from_static("en-US,en;q=0.9"));
+    headers.insert(HeaderName::from_static("connection"), HeaderValue::from_static("keep-alive"));
+    headers.insert(HeaderName::from_static("user-agent"), HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64)"));
+
+    let client = reqwest::Client::builder()
+        .default_headers(headers)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let url = &format!("https://referralmanager.churchofjesuschrist.org/services/people/mission/{}?includeDroppedPersons=true",
+        token_final.mission_id);
+    let res = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let text = res.text().await.map_err(|e| e.to_string())?;
+    app_handle.emit("people_list", text)
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 // Entry point
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -376,6 +448,7 @@ pub fn run() {
             install_models,
             generate,
             download_extension,
+            get_people,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ArrowLeftIcon, ArrowRightIcon } from '@lucide/svelte';
   import Authenticate from './Authenticate.svelte';
-
+  
   // Source Data
   const steps = [
     { label: 'Authentication', content: Authenticate},
