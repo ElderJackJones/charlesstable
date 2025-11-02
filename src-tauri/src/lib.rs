@@ -7,7 +7,6 @@ use tauri::Emitter;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, COOKIE, HeaderName};
 use reqwest;
 use futures_util::StreamExt;
-use warp::Filter;
 
 
 fn find_ollama_path() -> Option<PathBuf> {
@@ -368,6 +367,7 @@ async fn get_people( app_handle: tauri::AppHandle, userobj: String) -> Result<()
     use base64::{Engine as _, engine::general_purpose};
 
     #[derive(Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
     struct User {
         org_name: String,
         first_name: String,
@@ -433,6 +433,62 @@ async fn get_people( app_handle: tauri::AppHandle, userobj: String) -> Result<()
     Ok(())
 }
 
+#[tauri::command]
+async fn start_bridge(app_handle: tauri::AppHandle) -> Result<u16, String> {
+    use warp::Filter;
+    use warp::http::Method;
+    use std::net::TcpListener;
+
+    let health = warp::get()
+        .and(warp::path("health"))
+        .map(|| warp::reply::json(&serde_json::json!({ "status": "ok" })));
+
+    let app_handle_clone = app_handle.clone();
+    let auth = warp::post()
+    .and(warp::path("auth"))
+    .and(warp::body::bytes())
+    .map(move |body: bytes::Bytes| {
+        let data: String = String::from_utf8(body.to_vec()).unwrap_or_default(); // owned String
+        println!("📩 Received from extension: {}", data);
+        let _ = app_handle_clone.emit("user_auth", data);
+        warp::reply::with_status("OK".to_string(), warp::http::StatusCode::OK) // owned String
+    });
+
+    
+   let cors = warp::cors()
+        .allow_any_origin()
+        .allow_methods(&[Method::GET, Method::POST])
+        .allow_headers(vec![
+            "Content-Type",
+            "Accept",
+            "Origin",
+            "Sec-Fetch-Mode",
+            "Sec-Fetch-Site",
+        ])
+        .build();
+
+    let routes = health.or(auth)
+    .with(cors).boxed();
+
+    // Try ports 53102–53105
+    for port in 53102..=53105 {
+        if TcpListener::bind(("127.0.0.1", port)).is_ok() {
+            println!("✅ Bridge active on port {}", port);
+
+            let routes = routes.clone(); // warp filters are cheap to clone
+            tauri::async_runtime::spawn(async move {
+                warp::serve(routes)
+                    .run(([127, 0, 0, 1], port))
+                    .await;
+            });
+
+            return Ok(port);
+        }
+    }
+
+    Err("No free port found in range 53102–53105".into())
+}
+
 // Entry point
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -449,7 +505,10 @@ pub fn run() {
             generate,
             download_extension,
             get_people,
+            start_bridge
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+// TODO: get all session data and replicate in the fetch request

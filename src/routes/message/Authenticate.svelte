@@ -5,31 +5,27 @@
 	import { Check, ClipboardCopy, Save } from "@lucide/svelte";
 	import { listen } from '@tauri-apps/api/event';
 
-	let camelAuthToSnake = async (thing: string) => {
-		const authParsed = await JSON.parse(thing)
-		const authString = JSON.stringify({
-			is_proxy_user: authParsed.isProxyUser,
-			org_name: authParsed.orgName,
-			first_name: authParsed.firstName,
-			last_name: authParsed.lastName,
-			missionary_title: authParsed.missionaryTitle,
-			person_guid: authParsed.personGuid,
-			token: authParsed.token,
-			cookies: authParsed.cookies
-		})
+	let port : Number
+	let buttonName = "ugly"
 
-		return authString
+	let activateBridge = async (authToken: string) => {
+		port = await invoke("start_bridge")
+		buttonName = "bridge started"
+		console.log(port)
 	}
 
-	let trigger = async (authToken: string) => {
-		console.log(authToken)
-		const authClean = await camelAuthToSnake(authToken)
-		await invoke('get_people', {'userobj': authClean})
+	let requestPeople = async (data: String) => {
+		await invoke("get_people", {userobj : data})
 	}
 
 	onMount(async () => {
-		const unlisten = await listen<string>('my-event', (event) => {
-		console.log('Event received from Rust:', event.payload);
+		const unlisten = await listen<string>('user_auth', async (event) => {
+		console.log("This is the event payload:  " + event.payload)
+		await requestPeople(event.payload)
+
+		const otherlisten = await listen<string>('people_list', (event) => {
+			console.log(event.payload)
+		})
 	})
 	})
 
@@ -176,6 +172,6 @@
 		</button>
 	</div>
 </section>
-      <button class="btn" on:click={() => trigger(authToken)}>Ugly</button>
+      <button class="btn" on:click={() => activateBridge(authToken)}>{buttonName}</button>
 
 </div>
