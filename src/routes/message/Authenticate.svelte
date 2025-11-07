@@ -9,7 +9,7 @@
 	let buttonName = "ugly"
 
 	let activateBridge = async (authToken: string) => {
-		port = await invoke("start_bridge")
+		port = await invoke("start_server")
 		buttonName = "bridge started"
 		console.log(port)
 	}

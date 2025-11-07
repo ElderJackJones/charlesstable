@@ -1,12 +1,29 @@
+use serde::{Deserialize, Serialize};
 // src-tauri/src/lib.rs
 use tauri::{AppHandle, Manager};
 
 use std::process::Command;
 use std::path::PathBuf;
 use tauri::Emitter;
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, COOKIE, HeaderName};
+use rmp_serde::from_slice;
+use std::thread;
 use reqwest;
-use futures_util::StreamExt;
+use tiny_http::{Server, Response, Request};
+use futures_util::{StreamExt};
+
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct Person {
+    person_guid : String,
+    first_name: Option<String>,
+    last_name: Option<String>,
+    referral_status_id:  Option<i32>,
+    person_status_id:  Option<i32>,
+    zone_name:  Option<String>,
+    area_name:  Option<String>,
+    find_id:  Option<i32>
+}
 
 
 fn find_ollama_path() -> Option<PathBuf> {
@@ -361,134 +378,42 @@ fn download_extension() -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn get_people( app_handle: tauri::AppHandle, userobj: String) -> Result<(), String> {
-    // Take in the user obj and use it to fetch a bunch of people info. Process it then feed it back up to the frontend.
-    use serde::{Serialize, Deserialize};
-    use base64::{Engine as _, engine::general_purpose};
+fn start_server() -> Result<(), String> {
+    thread::spawn(|| {
+            let server = Server::http("127.0.0.1:51234").expect("Could not bind to port 51234");
+            println!("tiny-http listening on http://127.0.0.1:51234");
 
-    #[derive(Deserialize, Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct User {
-        org_name: String,
-        first_name: String,
-        last_name: String,
-        missionary_title: String,
-        person_guid: String,
-        token: String,
-        cookies: String 
-    }
-
-    #[derive(Deserialize, Serialize, Debug)]
-    #[serde(rename_all = "camelCase")]
-    struct Payload {
-        lds_account_id: String,
-        cmis_id: u64,
-        mission_id: i32,
-        missionary_id: u64,
-        org_id: u64,
-
-        #[serde(default)]
-        full_token: String
-    }
-
-    let current_user: User = serde_json::from_str(&userobj).unwrap();
-    
-    let token_parts: Vec<&str> = current_user.token.split('.').collect();
-    let token_bytes = general_purpose::URL_SAFE_NO_PAD.decode(token_parts[1]).unwrap();
-    let token_parsed: Payload = serde_json::from_slice(&token_bytes).unwrap();
-    let token_final = Payload {
-        full_token : current_user.token.clone(),
-        ..token_parsed
-    };
-    println!("{:?}", &token_final);
-    // Reqwest full person list and then process it
-
-    let mut headers = HeaderMap::new();
-    headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", token_final.full_token)).map_err(|e| e.to_string())?);
-    headers.insert(COOKIE, HeaderValue::from_str(&current_user.cookies).map_err(|e| e.to_string())?);
-    headers.insert(HeaderName::from_static("origin"), HeaderValue::from_static("https://referralmanager.churchofjesuschrist.org"));
-    headers.insert(HeaderName::from_static("referer"), HeaderValue::from_static("https://referralmanager.churchofjesuschrist.org/"));
-    headers.insert(HeaderName::from_static("accept"), HeaderValue::from_static("application/json, text/plain, */*"));
-    headers.insert(HeaderName::from_static("accept-language"), HeaderValue::from_static("en-US,en;q=0.9"));
-    headers.insert(HeaderName::from_static("connection"), HeaderValue::from_static("keep-alive"));
-    headers.insert(HeaderName::from_static("user-agent"), HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64)"));
-
-    let client = reqwest::Client::builder()
-        .default_headers(headers)
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    let url = &format!("https://referralmanager.churchofjesuschrist.org/services/people/mission/{}?includeDroppedPersons=true",
-        token_final.mission_id);
-    let res = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let text = res.text().await.map_err(|e| e.to_string())?;
-    app_handle.emit("people_list", text)
-        .map_err(|e| e.to_string())?;
+            for request in server.incoming_requests() {
+                handle_request(request);
+            }
+        });
 
     Ok(())
 }
 
-#[tauri::command]
-async fn start_bridge(app_handle: tauri::AppHandle) -> Result<u16, String> {
-    use warp::Filter;
-    use warp::http::Method;
-    use std::net::TcpListener;
-
-    let health = warp::get()
-        .and(warp::path("health"))
-        .map(|| warp::reply::json(&serde_json::json!({ "status": "ok" })));
-
-    let app_handle_clone = app_handle.clone();
-    let auth = warp::post()
-    .and(warp::path("auth"))
-    .and(warp::body::bytes())
-    .map(move |body: bytes::Bytes| {
-        let data: String = String::from_utf8(body.to_vec()).unwrap_or_default(); // owned String
-        println!("📩 Received from extension: {}", data);
-        let _ = app_handle_clone.emit("user_auth", data);
-        warp::reply::with_status("OK".to_string(), warp::http::StatusCode::OK) // owned String
-    });
-
-    
-   let cors = warp::cors()
-        .allow_any_origin()
-        .allow_methods(&[Method::GET, Method::POST])
-        .allow_headers(vec![
-            "Content-Type",
-            "Accept",
-            "Origin",
-            "Sec-Fetch-Mode",
-            "Sec-Fetch-Site",
-        ])
-        .build();
-
-    let routes = health.or(auth)
-    .with(cors).boxed();
-
-    // Try ports 53102–53105
-    for port in 53102..=53105 {
-        if TcpListener::bind(("127.0.0.1", port)).is_ok() {
-            println!("✅ Bridge active on port {}", port);
-
-            let routes = routes.clone(); // warp filters are cheap to clone
-            tauri::async_runtime::spawn(async move {
-                warp::serve(routes)
-                    .run(([127, 0, 0, 1], port))
-                    .await;
-            });
-
-            return Ok(port);
+fn handle_request(mut request: Request) {
+    if request.url() == "/receive" && request.method().as_str() == "POST" {
+        let mut body = Vec::new();
+        if let Err(e) = request.as_reader().read_to_end(&mut body) {
+            eprintln!("Error reading body: {e}");
+            let _ = request.respond(Response::from_string("Bad Request").with_status_code(400));
+            return;
         }
+
+        match from_slice::<Vec<Person>>(&body) {
+            Ok(persons) => {
+                println!("✅ Received {} persons!", persons.len());
+                let _ = request.respond(Response::from_string("OK").with_status_code(200));
+            }
+            Err(e) => {
+                eprintln!("❌ MsgPack decode error: {e}");
+                let _ = request.respond(Response::from_string("Invalid MsgPack").with_status_code(400));
+            }
+        }
+    } else {
+        let _ = request.respond(Response::from_string("Not Found").with_status_code(404));
     }
-
-    Err("No free port found in range 53102–53105".into())
 }
-
 // Entry point
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -504,11 +429,12 @@ pub fn run() {
             install_models,
             generate,
             download_extension,
-            get_people,
-            start_bridge
+            start_server
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+
 
 // TODO: get all session data and replicate in the fetch request
