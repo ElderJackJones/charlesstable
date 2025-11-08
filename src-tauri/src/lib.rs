@@ -10,6 +10,8 @@ use std::thread;
 use reqwest;
 use tiny_http::{Server, Response, Request};
 use futures_util::{StreamExt};
+use std::collections::{HashMap};
+
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -22,9 +24,25 @@ struct Person {
     person_status_id:  Option<i32>,
     zone_name:  Option<String>,
     area_name:  Option<String>,
-    find_id:  Option<i32>
+    find_id:  Option<i32>,
+    referral_assigned_date: Option<i64>
 }
 
+#[derive(Debug, Default)]
+struct Payload {
+    map: HashMap<String, HashMap<String, Vec<String>>>,
+}
+
+impl Payload {
+    fn insert(&mut self, key1: &str, key2: &str, value: &str) {
+        self.map
+            .entry(key1.to_string())       // auto-create top level
+            .or_default()
+            .entry(key2.to_string())       // auto-create sub level
+            .or_default()
+            .push(value.to_string());      // add value to existing vec
+    }
+}
 
 fn find_ollama_path() -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
@@ -402,7 +420,8 @@ fn handle_request(mut request: Request) {
 
         match from_slice::<Vec<Person>>(&body) {
             Ok(persons) => {
-                println!("✅ Received {} persons!", persons.len());
+                let names = process_people(persons);
+                println!("✅ Received {:?}", names);
                 let _ = request.respond(Response::from_string("OK").with_status_code(200));
             }
             Err(e) => {
@@ -413,6 +432,72 @@ fn handle_request(mut request: Request) {
     } else {
         let _ = request.respond(Response::from_string("Not Found").with_status_code(404));
     }
+}
+
+// Helper functions for processing
+fn is_green_or_yellow(person: &Person) -> bool {
+    matches!(person.person_status_id, Some(1 | 2 | 3 | 4))
+}
+
+fn unattempted(person: &Person) -> bool {
+    matches!(person.referral_status_id, Some(10))
+}
+
+fn unattempted_or_unsuccessful(person: &Person) -> bool {
+    matches!(person.referral_status_id, Some(20) | Some(10))
+}
+
+fn process_people(people: Vec<Person>) -> Payload {
+    let mut data = Payload::default();
+    
+    for mut p in people.into_iter() {
+        if should_include(&p) {
+            let zone = p.zone_name.take().unwrap_or_default(); // String
+            let area = p.area_name.take().unwrap_or_default(); // String
+            let name = cleaned_name(&p);
+            data.insert(&zone, &area, &name);
+
+        }
+    }
+
+    data
+}
+
+fn should_include(person: &Person) -> bool {
+    use std::time::{SystemTime, Duration, UNIX_EPOCH};
+
+    let zone_ok = person.zone_name.as_ref().map_or(false, |z| !z.trim().is_empty());
+    let area_ok = person.area_name.as_ref().map_or(false, |a| !a.trim().is_empty());
+
+    if !(zone_ok && area_ok) {
+        return false;
+    }
+
+    let green_or_yellow: bool = is_green_or_yellow(person);
+    let is_unattempted_or_unsuccessful = unattempted_or_unsuccessful(person);
+    let now = SystemTime::now();
+    let two_weeks = Duration::from_secs(14 * 24 * 60 * 60);
+
+    let less_than_two_weeks = if let Some(ts) = person.referral_assigned_date {
+        let person_time = UNIX_EPOCH + Duration::from_millis(ts as u64);
+        matches!(now.duration_since(person_time), Ok(diff) if diff <= two_weeks)
+    } else {
+        false
+    };
+
+    less_than_two_weeks && green_or_yellow && is_unattempted_or_unsuccessful
+}
+
+fn cleaned_name(person: &Person) -> String {
+    let mut name = format!(
+        "{}{}",
+        person.first_name.as_deref().unwrap_or(""),
+        person.last_name.as_deref().unwrap_or("")
+    );
+    if unattempted(person) {
+        name.push_str("❗");
+    }
+    name
 }
 // Entry point
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
