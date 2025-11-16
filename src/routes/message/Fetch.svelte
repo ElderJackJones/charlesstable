@@ -6,11 +6,13 @@
 	import { listen } from '@tauri-apps/api/event';
 
 	let port : Number
-	let buttonName = "ugly"
+	let buttonName = "Start Bridge"
+	let bridgeActive = false
 
 	let activateBridge = async (authToken: string) => {
 		port = await invoke("start_server")
-		buttonName = "bridge started"
+		buttonName = "Bridge Open"
+		bridgeActive = true
 		console.log(port)
 	}
 
@@ -72,15 +74,12 @@
 	}
 </script>
 
-<!-- ========================== -->
-<!-- Authenticate Card Content -->
-<!-- ========================== -->
 <div class="flex flex-col w-full space-y-8 p-2 sm:p-4 md:p-6 text-left">
 	<!-- Header -->
 	<header class="space-y-1">
-		<h2 class="text-2xl font-bold text-primary">Authenticate</h2>
+		<h2 class="text-2xl font-bold text-primary">Fetch Data</h2>
 		<p class="text-sm text-surface-500">
-			Install the Chrome extension and link it to your account.
+			Install the Chrome extension extract online data.
 		</p>
 	</header>
 
@@ -105,7 +104,7 @@
 		<ol class="list-decimal list-inside space-y-2 text-sm leading-relaxed">
 			<li>
 				Open Chrome and go to
-				<code class="text-primary select-all">chrome://extensions</code>
+				<code class="text-primary select-all">__chromeExtensionPage__</code>
 				<button
 					class="btn-icon ml-2 p-1 leading-none aspect-square preset-tonal"
 					on:click={copyExtensionsURL}
@@ -119,12 +118,7 @@
 				</button>
 			</li>
 			<li>
-				Click <strong>“Load unpacked”</strong>, open your
-				<code>Downloads</code> folder, and select
-				<strong>CharlesExtension</strong>.
-			</li>
-			<li>
-				Log in at
+				Open
 				<a
 					href="https://referralmanager.churchofjesuschrist.org/dashboard/"
 					on:click={(e) =>
@@ -135,43 +129,17 @@
 					rel="noopener noreferrer"
 					class="text-primary underline hover:text-primary-500"
 					>referralmanager.churchofjesuschrist.org</a
-				>.
+				> and log in.
 			</li>
 			<li>
-				Open your Chrome extensions and click on the
-				<strong>Charles Extension</strong>.
+				Click the button below to start the bridge.
 			</li>
-			<li>Paste your authentication token below and save it.</li>
+			<li>On the Referral Manager page, open the Charles Connect extension and follow its instructions.</li>
 		</ol>
 	</section>
 
-	<!-- Token Entry -->
-	<section
-	class="relative max-h-[70vh] pr-1"
->
-	<div class="relative max-h-[55vh]">
-		<textarea
-			id="userobj"
-			name="userobj"
-			bind:value={authToken}
-			class="textarea w-full h-full max-h-[55vh] bg-surface-950 border border-surface-700 rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-primary resize-y overflow-auto"
-			placeholder="Paste your authentication token here..."
-		></textarea>
-
-		<button
-			on:click={saveAuthToken}
-			class="absolute bottom-3 right-3 rounded-full bg-primary text-white p-2 shadow-md transition-all duration-200 hover:scale-105 hover:shadow-lg disabled:opacity-50"
-			aria-label="Save authentication token"
-			disabled={!authToken.trim()}
-		>
-			{#if tokenSaved}
-				<Check size={18} class="transition-opacity duration-300" />
-			{:else}
-				<Save size={18} class="transition-opacity duration-300" />
-			{/if}
-		</button>
+	<div class="grid w-full justify-items-center">
+      <button class={`w-64 btn rounded-full ${bridgeActive ? "btn preset-filled-success-500" : "preset-filled-tertiary-500"}`} on:click={() => activateBridge(authToken)} disabled={bridgeActive}>{buttonName}</button>
 	</div>
-</section>
-      <button class="btn" on:click={() => activateBridge(authToken)}>{buttonName}</button>
 
 </div>

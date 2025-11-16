@@ -11,6 +11,12 @@ use reqwest;
 use tiny_http::{Server, Response, Request};
 use futures_util::{StreamExt};
 use std::collections::{HashMap};
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering}
+    }
+};
 
 
 
@@ -397,25 +403,37 @@ fn download_extension() -> Result<String, String> {
 
 #[tauri::command]
 fn start_server() -> Result<(), String> {
-    thread::spawn(|| {
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let shutdown_flag = shutdown.clone();
+
+    thread::spawn(move || {
             let server = Server::http("127.0.0.1:51234").expect("Could not bind to port 51234");
             println!("tiny-http listening on http://127.0.0.1:51234");
 
             for request in server.incoming_requests() {
-                handle_request(request);
+                if shutdown_flag.load(Ordering::SeqCst) {
+                    println!("shutting down server");
+                    break
+                }
+                if handle_request(request, &shutdown_flag) {
+                    println!("successful recieve! Shutting down server");
+                    break
+                }
             }
+
+            println!("Cleaning threads...")
         });
 
     Ok(())
 }
 
-fn handle_request(mut request: Request) {
+fn handle_request(mut request: Request, shutdown_flag: &AtomicBool) -> bool {
     if request.url() == "/receive" && request.method().as_str() == "POST" {
         let mut body = Vec::new();
         if let Err(e) = request.as_reader().read_to_end(&mut body) {
             eprintln!("Error reading body: {e}");
             let _ = request.respond(Response::from_string("Bad Request").with_status_code(400));
-            return;
+            return false;
         }
 
         match from_slice::<Vec<Person>>(&body) {
@@ -423,14 +441,19 @@ fn handle_request(mut request: Request) {
                 let names = process_people(persons);
                 println!("✅ Received {:?}", names);
                 let _ = request.respond(Response::from_string("OK").with_status_code(200));
+                shutdown_flag.store(true, Ordering::SeqCst);
+
+                return true;
             }
             Err(e) => {
                 eprintln!("❌ MsgPack decode error: {e}");
                 let _ = request.respond(Response::from_string("Invalid MsgPack").with_status_code(400));
+                return false;
             }
         }
     } else {
         let _ = request.respond(Response::from_string("Not Found").with_status_code(404));
+        false
     }
 }
 

@@ -1,14 +1,14 @@
 <script lang="ts">
   import { ArrowLeftIcon, ArrowRightIcon } from '@lucide/svelte';
-  import Authenticate from './Authenticate.svelte';
+  import Fetch from './Fetch.svelte';
   
   // Source Data
   const steps = [
-    { label: 'Authentication', content: Authenticate},
-    { label: 'Step 2', content: Authenticate },
-    { label: 'Step 3', content: Authenticate },
-    { label: 'Step 4', content: Authenticate },
-    { label: 'Step 5', content: Authenticate },
+    { label: 'Authentication', content: Fetch},
+    { label: 'Step 2', content: Fetch },
+    { label: 'Step 3', content: Fetch },
+    { label: 'Step 4', content: Fetch },
+    { label: 'Step 5', content: Fetch },
   ];
 
   // Reactive
