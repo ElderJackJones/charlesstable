@@ -1,37 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" %sveltekit.theme%>
+<html lang="en" data-theme="hamlindigo">
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		
-		<!-- Anti-flicker theme script -->
-		<script>
-			(function() {
-				try {
-					const saved = localStorage.getItem('charles-settings');
-					const theme = saved ? JSON.parse(saved).preferredTheme || 'legacy' : 'legacy';
-					document.documentElement.setAttribute('data-theme', theme);
-					document.documentElement.setAttribute('data-theme-loaded', 'true');
-				} catch (e) {
-					document.documentElement.setAttribute('data-theme', 'legacy');
-					document.documentElement.setAttribute('data-theme-loaded', 'true');
-				}
-			})();
-		</script>
-		
-		<!-- Anti-flicker CSS -->
-		<style>
-			html:not([data-theme-loaded]) {
-				visibility: hidden;
-			}
-			
-			/* Optional: Smooth theme transitions after initial load */
-			html[data-theme-loaded] * {
-				transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
-			}
-		</style>
-		
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

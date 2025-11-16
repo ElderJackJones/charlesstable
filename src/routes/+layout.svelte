@@ -6,7 +6,6 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
-	import { loadSettings } from '$lib/stores/settings';
   	// Icons
 	import { House, MessageSquareText, FileSpreadsheet, Cog } from '@lucide/svelte';
 
@@ -18,7 +17,6 @@
 		{ id: 'home', label: 'Home', icon: House, href: '/' },
 		{ id: 'message', label: 'Message', icon: MessageSquareText, href: '/message' },
 		{ id: 'data', label: 'Data', icon: FileSpreadsheet, href: '/data' },
-		{ id: 'settings', label: 'Settings', icon: Cog, href: '/settings' }
 	];
 
 	  let anchorRail = 'btn hover:preset-tonal aspect-square w-full max-w-[84px] flex flex-col items-center gap-0.5';
@@ -38,15 +36,6 @@
 	value = newValue
 	goto(`/${newValue}`);
   };
-
-
-	// Load settings and apply theme on app startup
-	onMount(() => {
-		if (browser) {
-			// This will load settings from localStorage and apply the saved theme
-			loadSettings();
-		}
-	});
 </script>
 
 <svelte:head>
