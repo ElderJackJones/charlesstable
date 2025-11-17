@@ -34,7 +34,7 @@ struct Person {
     referral_assigned_date: Option<i64>
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 struct Payload {
     map: HashMap<String, HashMap<String, Vec<String>>>,
 }
@@ -402,9 +402,10 @@ fn download_extension() -> Result<String, String> {
 }
 
 #[tauri::command]
-fn start_server() -> Result<(), String> {
+fn start_server( app_handle: tauri::AppHandle) -> Result<(), String> {
     let shutdown = Arc::new(AtomicBool::new(false));
     let shutdown_flag = shutdown.clone();
+    let handle = app_handle.clone();
 
     thread::spawn(move || {
             let server = Server::http("127.0.0.1:51234").expect("Could not bind to port 51234");
@@ -415,7 +416,7 @@ fn start_server() -> Result<(), String> {
                     println!("shutting down server");
                     break
                 }
-                if handle_request(request, &shutdown_flag) {
+                if handle_request(&handle, request, &shutdown_flag) {
                     println!("successful recieve! Shutting down server");
                     break
                 }
@@ -427,7 +428,7 @@ fn start_server() -> Result<(), String> {
     Ok(())
 }
 
-fn handle_request(mut request: Request, shutdown_flag: &AtomicBool) -> bool {
+fn handle_request(app: &AppHandle, mut request: Request, shutdown_flag: &AtomicBool) -> bool {
     if request.url() == "/receive" && request.method().as_str() == "POST" {
         let mut body = Vec::new();
         if let Err(e) = request.as_reader().read_to_end(&mut body) {
@@ -442,6 +443,7 @@ fn handle_request(mut request: Request, shutdown_flag: &AtomicBool) -> bool {
                 println!("✅ Received {:?}", names);
                 let _ = request.respond(Response::from_string("OK").with_status_code(200));
                 shutdown_flag.store(true, Ordering::SeqCst);
+                let _ = app.emit("payload", &names);
 
                 return true;
             }

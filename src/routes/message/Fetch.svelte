@@ -8,6 +8,7 @@
 	let port : Number
 	let buttonName = "Start Bridge"
 	let bridgeActive = false
+	let payloadSaved = false
 
 	let activateBridge = async (authToken: string) => {
 		port = await invoke("start_server")
@@ -16,24 +17,35 @@
 		console.log(port)
 	}
 
+	let handlePayload = (payload: Payload) => {
+		sessionStorage.setItem("payload", JSON.stringify(payload.map))
+		payloadSaved = true
+	}
+
 	let requestPeople = async (data: String) => {
 		await invoke("get_people", {userobj : data})
 	}
 
-	onMount(async () => {
-		const unlisten = await listen<string>('user_auth', async (event) => {
-		console.log("This is the event payload:  " + event.payload)
-		await requestPeople(event.payload)
+	interface Payload {
+		map: Record<string, Record<string, string[]>>;
+	}
 
-		const otherlisten = await listen<string>('people_list', (event) => {
-			console.log(event.payload)
-		})
-	})
+	onMount(() => {
+		let cleanup: (() => void) | undefined;
+
+		(async () => {
+			cleanup = await listen<Payload>('payload', (e) => {
+				handlePayload(e.payload)
+			})
+		})()
+
+		return () => {
+			if (cleanup) cleanup();
+		}
 	})
 
 	let downloaded = false;
 	let renderButton = true;
-	let clipboardText = "";
     let authToken = "";
 	let copied = false;
 	let tokenSaved = false;
@@ -67,11 +79,6 @@
 		setTimeout(() => (copied = false), 3000);
 	}
 
-	async function saveAuthToken() {
-		// 🔧 TODO: Add logic to handle token saving (e.g., invoke or localStorage)
-        localStorage.setItem('auth', authToken)
-		tokenSaved = true;
-	}
 </script>
 
 <div class="flex flex-col w-full space-y-8 p-2 sm:p-4 md:p-6 text-left">
@@ -139,7 +146,15 @@
 	</section>
 
 	<div class="grid w-full justify-items-center">
-      <button class={`w-64 btn rounded-full ${bridgeActive ? "btn preset-filled-success-500" : "preset-filled-tertiary-500"}`} on:click={() => activateBridge(authToken)} disabled={bridgeActive}>{buttonName}</button>
+		{#if !payloadSaved}
+      	<button class={`w-64 btn rounded-full ${bridgeActive ? "btn preset-filled-success-500" : "preset-filled-tertiary-500"}`} on:click={() => activateBridge(authToken)} disabled={bridgeActive}>{buttonName}</button>
+		{:else}
+		<div class="w-full card bg-surface-400 grid justify-items-center">
+			<p class="my-4">
+				Data received!
+			</p>
+		</div>
+		{/if}
 	</div>
 
 </div>
