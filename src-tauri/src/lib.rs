@@ -9,7 +9,6 @@ use rmp_serde::from_slice;
 use std::thread;
 use reqwest;
 use tiny_http::{Server, Response, Request};
-use futures_util::{StreamExt};
 use std::collections::{HashMap};
 use std::{
     sync::{
@@ -290,115 +289,33 @@ async fn install_models(app_handle: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn generate( app_handle: tauri::AppHandle, prompt: String, model: String, id: i32) -> Result<(), String> {
+async fn generate( app_handle: tauri::AppHandle, prompt: String, model: String) -> Result<(), String> {
     println!("command recieved for generate");
     let handle = app_handle.clone();
     let body = serde_json::json!({
         "model": model,
         "prompt": prompt,
-        "stream": true
+        "stream": false,
+        "keep_alive": "10m"
     });
 
     let client = reqwest::Client::new();
     let res = client.post("http://localhost:11434/api/generate")
-        .body(prompt)
         .json(&body)
         .send()
         .await
         .map_err(|e| e.to_string())?;
 
-    let mut stream = res.bytes_stream();
-    while let Some(item) = stream.next().await {
-        let chunk = item.map_err(|e| e.to_string())?;
-        let text = String::from_utf8_lossy(&chunk);
-        for line in text.lines() {
-            if line.trim().is_empty() {
-                continue;
-            }
+    let response_json : serde_json::Value = res
+    .json()
+    .await
+    .map_err(|e| e.to_string())?;
 
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
-                if let Some(done) = json.get("done").and_then(|d| d.as_bool()) {
-                    if done {
-                        // Stream finished
-                        break;
-                    }
-                }
-
-                if let Some(resp) = json.get("response").and_then(|r| r.as_str()) {
-                    // Here you can emit the response to the frontend
-                    handle.emit(&format!("chunk-{}", id), resp).map_err(|e| e.to_string())?;
-                }
-            }
-        }
-    }
-
-     handle
-        .emit(&format!("finish-{}", id), ())
-        .map_err(|e| e.to_string())?;
+    if let Some(response_text) = response_json.get("response").and_then(|r| r.as_str()) {
+            handle.emit("response", response_text).map_err(|e| e.to_string())?;
+    }    
 
     Ok(())
-}
-
-#[tauri::command]
-fn download_extension() -> Result<String, String> {
-    use std::fs;
-    use std::fs::File;
-    use reqwest::blocking::get;
-    use zip::ZipArchive;
-
-    // 1. Download the zipball
-    let url = "https://github.com/ElderJackJones/CharlesExtension/zipball/main";
-    let response = get(url).map_err(|e| e.to_string())?;
-    let bytes = response.bytes().map_err(|e| e.to_string())?;
-
-    // 2. Get user's Downloads directory
-    let downloads_dir = dirs::download_dir().ok_or("Couldn't find Downloads folder")?;
-    let zip_path = downloads_dir.join("CharlesExtension.zip");
-    let extract_temp = downloads_dir.join("CharlesExtension_temp");
-    let final_dir = downloads_dir.join("CharlesExtension");
-
-    // Clean up any old files
-    let _ = fs::remove_file(&zip_path);
-    let _ = fs::remove_dir_all(&extract_temp);
-    let _ = fs::remove_dir_all(&final_dir);
-
-    // 3. Save zip file
-    fs::write(&zip_path, &bytes).map_err(|e| e.to_string())?;
-
-    // 4. Extract zip into temp directory
-    let file = File::open(&zip_path).map_err(|e| e.to_string())?;
-    let mut zip = ZipArchive::new(file).map_err(|e| e.to_string())?;
-    fs::create_dir_all(&extract_temp).map_err(|e| e.to_string())?;
-    zip.extract(&extract_temp).map_err(|e| e.to_string())?;
-
-    // 5. Find the extracted folder (GitHub adds a single top-level folder)
-    let inner_folder = fs::read_dir(&extract_temp)
-        .map_err(|e| e.to_string())?
-        .filter_map(|e| e.ok())
-        .find(|entry| entry.path().is_dir())
-        .map(|entry| entry.path())
-        .ok_or("No folder found in ZIP")?;
-
-    // 6. Move contents to final "CharlesExtension" folder
-    fs::create_dir_all(&final_dir).map_err(|e| e.to_string())?;
-    for entry in fs::read_dir(&inner_folder).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let dest = final_dir.join(entry.file_name());
-        if entry.path().is_dir() {
-            fs::rename(entry.path(), &dest)
-                .or_else(|_| fs_extra::dir::copy(&entry.path(), &final_dir, &fs_extra::dir::CopyOptions::new())
-                .map(|_| ()))
-                .map_err(|e| e.to_string())?;
-        } else {
-            fs::copy(entry.path(), &dest).map_err(|e| e.to_string())?;
-        }
-    }
-
-    // 7. Cleanup
-    let _ = fs::remove_file(&zip_path);
-    let _ = fs::remove_dir_all(&extract_temp);
-
-    Ok(final_dir.to_string_lossy().into_owned())
 }
 
 #[tauri::command]
@@ -538,7 +455,6 @@ pub fn run() {
             open_in_chrome,
             install_models,
             generate,
-            download_extension,
             start_server
         ])
         .run(tauri::generate_context!())

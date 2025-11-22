@@ -1,88 +1,24 @@
 <script lang="ts">
-  import { ArrowLeftIcon, ArrowRightIcon } from '@lucide/svelte';
   import Fetch from './Fetch.svelte';
-  
-  // Source Data
-  const steps = [
-    { label: 'Authentication', content: Fetch},
-    { label: 'Step 2', content: Fetch },
-    { label: 'Step 3', content: Fetch },
-    { label: 'Step 4', content: Fetch },
-    { label: 'Step 5', content: Fetch },
-  ];
-
-  // Reactive
-  let currentStep = $state(0);
-  const isFirstStep = $derived(currentStep === 0);
-  const isLastStep = $derived(currentStep === steps.length - 1);
-
-  /** Determine if on the current step. */
-  function isCurrentStep(index: number) {
-    return currentStep === index;
-  }
-
-  /** Jump to a particular step. */
-  function setStep(index: number) {
-    currentStep = index;
-  }
-
-  /** Progress to the previous step. */
-  function prevStep() {
-    currentStep--;
-  }
-
-  /** Progress to the next step. */
-  function nextStep() {
-    currentStep++;
-  }
+  import Generate from './Generate.svelte'
+  import { Tabs } from '@skeletonlabs/skeleton-svelte';
 </script>
 
-<div class="w-full p-8">
-  <!-- Stepper -->
-  <div class="space-y-8">
-    <!-- Timeline -->
-    <div class="relative">
-      <!-- Numerals -->
-      <div class="flex justify-between items-center gap-4">
-        {#each steps as step, i (step)}
-          <!-- Numeral Button -->
-          <button
-            class="btn-icon btn-icon-sm rounded-full {isCurrentStep(i) ? 'preset-filled-primary-500' : 'preset-filled-surface-200-800'}"
-            onclick={() => setStep(i)}
-            title="Go to {step.label}"
-            aria-label="Go to {step.label}"
-          >
-            <span class="font-bold">{i + 1}</span>
-          </button>
-        {/each}
-      </div>
-      <!-- Line -->
-      <hr class="hr !border-surface-200-800 absolute top-[50%] left-0 right-0 z-[-1]" />
-    </div>
-    <!-- Loop all steps -->
-    {#each steps as step, i (step)}
-      <!-- Filter to current step only -->
-      {#if isCurrentStep(i)}
-        {@const Step = steps[currentStep].content}
 
-        <!-- Individual steps -->
-        <div class="card max-h-[75vh] overflow-y-auto bg-surface-100-900 p-10 space-y-2 text-center">
-            <Step />
-        </div>
-      {/if}
-    {/each}
-    <!-- Navigation -->
-    <nav class="flex justify-between items-center gap-4">
-      <!-- Back Button -->
-      <button type="button" class="btn preset-tonal hover:preset-filled" onclick={prevStep} disabled={isFirstStep}>
-        <ArrowLeftIcon size={18} />
-        <span>Previous</span>
-      </button>
-      <!-- Next Button -->
-      <button type="button" class="btn preset-tonal hover:preset-filled" onclick={nextStep} disabled={isLastStep}>
-        <span>Next</span>
-        <ArrowRightIcon size={18} />
-      </button>
-    </nav>
-  </div>
-</div>
+  <Tabs defaultValue="fetch" class="mt-2">
+    <Tabs.List>
+      <Tabs.Trigger class="ml-2" value="fetch">Fetch</Tabs.Trigger>
+      <Tabs.Trigger value="generate">Generate</Tabs.Trigger>
+      <Tabs.Indicator />
+    </Tabs.List>
+    <Tabs.Content value="fetch">
+      <div class="card mt-5 mx-10 max-h-[75vh] overflow-y-auto bg-surface-100-900 p-10 space-y-2 text-center">
+        <Fetch />
+      </div>
+    </Tabs.Content>
+    <Tabs.Content value="generate">
+      <div class="card mt-5 mb-5 mx-10 max-h-[95vh] overflow-y-auto bg-surface-100-900 p-10 space-y-2 text-center">
+        <Generate />
+      </div>
+    </Tabs.Content>
+  </Tabs>
