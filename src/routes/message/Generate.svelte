@@ -241,7 +241,7 @@
 					<div
 						class="bg-primary h-2 rounded-full transition-all duration-300"
 						style="width: {(messages.filter((m) => m.sent).length / messages.length) * 100}%"
-					/>
+					></div>
 				</div>
 			</div>
 
