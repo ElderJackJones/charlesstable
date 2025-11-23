@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { OctagonAlert, CircleCheckBig, Copy, ChevronRight, LoaderCircle, FerrisWheel, Brain } from "@lucide/svelte";
+	import { OctagonAlert, CircleCheckBig, Copy, ChevronRight, LoaderCircle, FerrisWheel, Brain, MoveDownLeft } from "@lucide/svelte";
 	import { Switch } from "@skeletonlabs/skeleton-svelte";
 	import { invoke } from "@tauri-apps/api/core";
 	import { listen } from "@tauri-apps/api/event";
@@ -11,19 +11,29 @@
 		};
 	}
 
+	function waitForEvent<T = unknown>(eventName: string): Promise<T> {
+	return new Promise(async (resolve) => {
+		const unlisten = await listen<T>(eventName, (e) => {
+		unlisten();      // stop listening after first event
+		resolve(e.payload);
+		});
+	});
+	}
+
+
 	let payload: Payload;
 	let payloadFlag = false;
 	let currentStep = 0; // 0: initial, 1: generating, 2: showing messages
 	let messages: Array<{ zone: string; message: string; sent: boolean }> = [];
 	let isGenerating = false;
 	let currentMessageIndex = 0;
-	let model = "charlesSage:latest"
+	let model = "sage"
 
 	let toggleModel = () => {
-		if (model === "charlesJest:latest") {
-			model = "charlesSage:latest"
+		if (model === "jest") {
+			model = "sage"
 		} else {
-			model = "charlesJest:latest"
+			model = "jest"
 		}
 		console.log(model)
 	}
@@ -42,34 +52,61 @@
 		}
 	};
 
+	function waitForNEvents<T>(
+		event: string,
+		n: number,
+		onEach: (payload: T, index: number) => void
+	) {
+		return new Promise<void>(async (resolve) => {
+			let count = 0;
+			const unlisten = await listen<T>(event, (e) => {
+				onEach(e.payload, count);
+				count++;
+
+				if (count >= n) {
+					unlisten();
+					resolve();
+				}
+			});
+		});
+	}
+
+
 	async function generateMessages() {
+		if (isGenerating) return
 		isGenerating = true
 		currentStep = 1
+		let zones = Object.keys(payload)
 
 		if (payload && typeof payload === 'object') {
 			messages = []
+			let prompts = []
 
-            for (const zone in payload) {
+			for (const zone of zones) {
                 const uncontactedZoneNumber = getPersonCount(payload[zone])
-				let msgInProgress = ""
-				
-				const AIMessage = await new Promise(async (resolve) => {
-					const unlisten = await listen("response", (e) => {
-						unlisten() // Clean up immediately after receiving
-						resolve(e.payload)
-					})
-					
-					invoke('generate', {
-						prompt: `The ${zone} zone has ${uncontactedZoneNumber} referrals to contact. Generate a message to get them going!`, 
-						model: model
-					})
-				})
+				prompts.push(`The ${zone} zone has ${uncontactedZoneNumber} referrals to contact. Generate a message to get them going!`)
+			}
 
-				msgInProgress += AIMessage
+			invoke('generate', {prompts, mood: model})
+
+			await waitForNEvents<string>("completion", zones.length, (message, i) => {
+				messages.push({
+					zone: zones[i],
+					message,
+					sent: false
+				})
+			})
+			
+			let count = 0
+            for (const zone of zones) {
+				let msgInProgress = ""
+
+				msgInProgress += messages[count].message
 				msgInProgress += "\n"
 				const areas = payload[zone];
 				
 				for (const area in areas) {
+					msgInProgress += "\n"
 					msgInProgress += "- " + area.trim() + "\n"
 					const names = areas[area];
 					for (const name of names) {
@@ -77,12 +114,10 @@
 					}
 				}
 
-				messages.push({zone: zone, message: msgInProgress, sent: false})
+				messages[count].message = msgInProgress
+				count++
 			}
-
-			
 		} else {
-			// Fallback if payload structure is unexpected
 			messages = [];
 			payloadFlag = true;
 			currentStep = 0;
@@ -179,7 +214,7 @@
 			</div>
 			
 			<div class="flex w-full justify-center pt-2">
-				<button on:click={generateMessages} class="btn preset-filled-primary-500 w-full sm:w-1/2">
+				<button on:click={generateMessages} class="btn preset-filled-primary-500 w-full sm:w-1/2" disabled={isGenerating}>
 					Generate Messages
 				</button>
 			</div>

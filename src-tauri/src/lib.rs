@@ -16,6 +16,7 @@ use std::{
         atomic::{AtomicBool, Ordering}
     }
 };
+use serde_json::json;
 
 
 
@@ -289,34 +290,87 @@ async fn install_models(app_handle: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn generate( app_handle: tauri::AppHandle, prompt: String, model: String) -> Result<(), String> {
-    println!("command recieved for generate");
+async fn generate( app_handle: tauri::AppHandle, prompts: Vec<String>, mood: String) -> Result<(), String> {
+    let api_key = std::env::var("GROQ_KEY")
+    .expect("No API key found");
     let handle = app_handle.clone();
-    let body = serde_json::json!({
-        "model": model,
-        "prompt": prompt,
-        "stream": false,
-        "keep_alive": "10m"
-    });
+
+    let model_string = if mood == "jest" {
+        "You are Charles, a witty companion to LDS missionaries who generates 1-2 sentence preambles for referral batches. Keep responses snappy, wholesome, and missionary-appropriate. Mention referral count and zone when provided. Scale tone by volume: 1-5 (playful/breezy), 6-15 (upbeat teamwork), 16-25 (dramatic/energetic), 26+ (mock-urgent/cheeky), 0 (gentle encouragement). Output only the preamble with no explanations. Include scriptural humor when appropriate. Examples: 'Seven new names for Charleston — let's make Monday a miracle day!' (7 referrals). 'Thirty-four names?! Hilton Head, this isn't a zone — it's a referral tsunami! Time to ride the wave!' (34 referrals). 'Zero referrals today, Greenville — perfect time to sharpen your skills and prep for tomorrow's harvest!' (0 referrals)."
+    } else {
+        "You are Charles, a witty, encouraging companion to LDS missionaries who generates 1-2 sentence preambles for referral batches. Keep responses uplifting, positive, and lightly spiritual with gentle LDS-faith-based imagery. Mention referral count and zone when provided. Scale tone by volume: 1-5 (calm/reflective), 6-15 (upbeat/motivating), 16-25 (inspiring with steady energy), 26+ (energizing but grounded, emphasize collective effort and divine support), 0 (gentle/reflective, preparing for future). Vary vocabulary to keep fresh. Output only the preamble with no explanations. Examples: 'Seven opportunities in Charleston today — each conversation plants seeds of hope and truth.' (7 referrals). 'Thirty-four opportunities in Hilton Head — you're not alone in this work, and every effort matters deeply.' (34 referrals). 'No referrals today, Greenville — a moment to prepare your hearts and strengthen your faith for tomorrow's harvest.' (0 referrals)."
+    };
 
     let client = reqwest::Client::new();
-    let res = client.post("http://localhost:11434/api/generate")
-        .json(&body)
+
+    for prompt in prompts.iter() {
+        let resp = client.post("https://api.groq.com/openai/v1/chat/completions")
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .json(&json!({
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {
+                    "role": "system", 
+                    "content": model_string
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0.8,
+            "max_tokens": 100
+        }))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Request failed: {}", e))?;
 
-    let response_json : serde_json::Value = res
-    .json()
-    .await
-    .map_err(|e| e.to_string())?;
 
-    if let Some(response_text) = response_json.get("response").and_then(|r| r.as_str()) {
-            handle.emit("response", response_text).map_err(|e| e.to_string())?;
-    }    
+        let result: serde_json::Value = resp.json().await
+            .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+        
+        let preamble = result["choices"][0]["message"]["content"]
+            .as_str()
+            .ok_or_else(|| "Invalid response structure".to_string())?;
+
+        handle.emit("completion", preamble)
+            .map_err(|e| format!("Failed to emit event: {}", e))?;
+    }
 
     Ok(())
 }
+
+
+// #[tauri::command]
+// async fn generate( app_handle: tauri::AppHandle, prompt: String, model: String) -> Result<(), String> {
+//     println!("command recieved for generate");
+//     let handle = app_handle.clone();
+//     let body = serde_json::json!({
+//         "model": model,
+//         "prompt": prompt,
+//         "stream": false,
+//         "keep_alive": "10m"
+//     });
+
+//     let client = reqwest::Client::new();
+//     let res = client.post("http://localhost:11434/api/generate")
+//         .json(&body)
+//         .send()
+//         .await
+//         .map_err(|e| e.to_string())?;
+
+//     let response_json : serde_json::Value = res
+//     .json()
+//     .await
+//     .map_err(|e| e.to_string())?;
+
+//     if let Some(response_text) = response_json.get("response").and_then(|r| r.as_str()) {
+//             handle.emit("response", response_text).map_err(|e| e.to_string())?;
+//     }    
+
+//     Ok(())
+// }
 
 #[tauri::command]
 fn start_server( app_handle: tauri::AppHandle) -> Result<(), String> {
