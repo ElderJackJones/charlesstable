@@ -12,12 +12,12 @@
       <Tabs.Indicator />
     </Tabs.List>
     <Tabs.Content value="fetch">
-      <div class="card mt-5 mx-10 max-h-[75vh] overflow-y-auto bg-surface-100-900 p-10 space-y-2 text-center">
+      <div class="card mt-5 mx-10 max-h-[75vh] overflow-y-auto bg-surface-100-950 p-10 space-y-2 text-center">
         <Fetch />
       </div>
     </Tabs.Content>
     <Tabs.Content value="generate">
-      <div class="card mt-5 mb-5 mx-10 max-h-[95vh] overflow-y-auto bg-surface-100-900 p-10 space-y-2 text-center">
+      <div class="card mt-5 mb-5 mx-10 max-h-[95vh] overflow-y-auto bg-surface-100-950 p-10 space-y-2 text-center">
         <Generate />
       </div>
     </Tabs.Content>

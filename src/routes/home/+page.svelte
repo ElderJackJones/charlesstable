@@ -1,5 +1,6 @@
 <script>
     import { Rabbit, Pilcrow, Telescope } from "@lucide/svelte";
+	import { Avatar } from "@skeletonlabs/skeleton-svelte";
 
 	// Add any reactive variables or functions here
 	let currentYear = new Date().getFullYear();
@@ -11,9 +12,7 @@
 	<header class="text-center mb-12">
 		<div class="flex justify-center items-center mb-6">
 			<!-- Bot Avatar/Icon -->
-			<div class="w-20 h-20 bg-primary-500 rounded-full flex items-center justify-center mb-4">
-				<span class="text-3xl font-bold text-white">C</span>
-			</div>
+				<img class="w-20 h-20" src="/icon.png" alt="Icon">
 		</div>
 		<h1 class="h1 mb-4">Meet Charles</h1>
 		<p class="text-xl text-surface-600-300-token mb-6 max-w-2xl mx-auto">
