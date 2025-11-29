@@ -14,3 +14,10 @@
 	background-color: var(--color-surface-50-950);
 	color: var(--color-surface-950-50);
 }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}

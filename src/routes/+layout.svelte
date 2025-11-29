@@ -43,9 +43,9 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="card border-surface-100-900 grid h-dvh w-full grid-cols-[auto_1fr] border-[1px] overflow-hidden">
+<div class="card border-surface-100-900 grid h-dvh w-full grid-cols-[auto_1fr] grid-rows-[1fr] border-[1px] box-border">
   <!-- Component -->
-  <Navigation layout="rail">
+  <Navigation layout="rail" class="bg-surface-300-700">
     <Navigation.Menu>
 	  {#each links as link (link)}
           {@const Icon = link.icon}
@@ -57,7 +57,9 @@
 	</Navigation.Menu>
   </Navigation>
   <!-- Content -->
-  <div class="flex overflow-y-auto">
+<div class="grid grid-rows-[1fr] overflow-hidden min-h-0">
+  <div class="overflow-y-auto min-h-0">
     {@render children?.()}
   </div>
+</div>
 </div>
