@@ -57,8 +57,8 @@
 	</Navigation.Menu>
   </Navigation>
   <!-- Content -->
-<div class="grid grid-rows-[1fr] overflow-hidden min-h-0">
-  <div class="overflow-y-auto min-h-0">
+<div class="grid grid-rows-[1fr] h-dvh">
+  <div class="overflow-y-auto h-dvh">
     {@render children?.()}
   </div>
 </div>

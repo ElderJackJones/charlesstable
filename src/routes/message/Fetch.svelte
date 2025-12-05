@@ -105,7 +105,7 @@
 		{#if !payloadSaved}
       	<button class={`w-64 btn rounded-full ${bridgeActive ? "btn preset-filled-success-500" : "preset-filled-tertiary-500"}`} on:click={() => activateBridge(authToken)} disabled={bridgeActive}>{buttonName}</button>
 		{:else}
-		<div class="w-full card bg-surface-400 grid justify-items-center">
+		<div class="w-full card preset-tonal-success grid justify-items-center">
 			<p class="my-4">
 				Data received!
 			</p>

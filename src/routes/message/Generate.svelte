@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { OctagonAlert, CircleCheckBig, Copy, ChevronRight, LoaderCircle, FerrisWheel, Brain, MoveDownLeft } from "@lucide/svelte";
-	import { Switch } from "@skeletonlabs/skeleton-svelte";
+	import { Check, OctagonAlert, CircleCheckBig, Copy, ChevronRight, LoaderCircle, FerrisWheel, Brain, MoveDownLeft } from "@lucide/svelte";
+	import { Switch, Progress } from "@skeletonlabs/skeleton-svelte";
 	import { invoke } from "@tauri-apps/api/core";
 	import { listen } from "@tauri-apps/api/event";
 	import { onMount } from "svelte";
@@ -28,6 +28,7 @@
 	let isGenerating = false;
 	let currentMessageIndex = 0;
 	let model = "sage"
+	let copied = false
 
 	let toggleModel = () => {
 		if (model === "jest") {
@@ -130,7 +131,7 @@
 
 	function copyMessage(index: number) {
 		navigator.clipboard.writeText(messages[index].message);
-		// Optional: Add a toast notification here
+		copied = true
 	}
 
 	function markAsSent(index: number) {
@@ -138,6 +139,7 @@
 		if (index < messages.length - 1) {
 			currentMessageIndex = index + 1;
 		}
+		copied = false
 	}
 
 	function resetFlow() {
@@ -187,7 +189,7 @@
 			</div>
 			
 			<!-- AI Model Selection -->
-			<div class="card p-6 bg-surface-100-900 border-2 border-surface-300-700">
+			<div class="card p-6 bg-surface-100-900 border-2 border-surface-300-700 overflow-hidden">
 				<h3 class="font-semibold mb-4 text-center">Select AI Model</h3>
 				<div class="flex items-center justify-center gap-4">
 					<div class="flex items-center gap-3">
@@ -237,12 +239,11 @@
 						{messages.filter((m) => m.sent).length} / {messages.length} sent
 					</span>
 				</div>
-				<div class="w-full bg-surface-300-700 rounded-full h-2">
-					<div
-						class="bg-primary h-2 rounded-full transition-all duration-300"
-						style="width: {(messages.filter((m) => m.sent).length / messages.length) * 100}%"
-					></div>
-				</div>
+				<Progress value={messages.filter((m) => m.sent).length} max={messages.length}>
+					<Progress.Track class="fill-secondary-50-950">
+						<Progress.Range />
+					</Progress.Track>
+				</Progress>
 			</div>
 
 			<!-- Current Message Card -->
@@ -264,6 +265,7 @@
 						</div>
 
 						<div class="flex gap-2">
+							{#if !copied}
 							<button
 								on:click={() => copyMessage(index)}
 								class="btn preset-filled flex-1"
@@ -272,6 +274,15 @@
 								<Copy size={16} class="mr-2" />
 								Copy Message
 							</button>
+							{:else}
+							<button
+								class="btn preset-filled flex-1"
+								disabled
+							>
+								<Check size={16} class="mr-2" />
+								Copied!
+							</button>
+							{/if}
 							<button
 								on:click={() => markAsSent(index)}
 								class="btn preset-filled-success flex-1"
