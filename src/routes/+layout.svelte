@@ -15,9 +15,7 @@
 
 	const links = [
 		{ id: 'home', label: 'Home', icon: House, href: '/' },
-		{ id: 'message', label: 'Message', icon: MessageSquareText, href: '/message' },
-		{ id: 'data', label: 'Data', icon: FileSpreadsheet, href: '/data' },
-		{ id: 'help', label: 'Help', icon: CircleQuestionMark, href: '/help'}
+		{ id: 'message', label: 'Message', icon: MessageSquareText, href: '/message' }
 	];
 
 	  let anchorRail = 'btn hover:preset-tonal aspect-square w-full max-w-[84px] flex flex-col items-center gap-0.5';
