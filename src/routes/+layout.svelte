@@ -7,7 +7,7 @@
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
   	// Icons
-	import { House, MessageSquareText, FileSpreadsheet, CircleQuestionMark } from '@lucide/svelte';
+	import { House, MessageSquareText, KeySquare } from '@lucide/svelte';
 
   // State - derive navigation value from current route
     let value = $state('home');
@@ -15,7 +15,8 @@
 
 	const links = [
 		{ id: 'home', label: 'Home', icon: House, href: '/' },
-		{ id: 'message', label: 'Message', icon: MessageSquareText, href: '/message' }
+		{ id: 'message', label: 'Message', icon: MessageSquareText, href: '/message' },
+		{id: 'advanced', label: 'Advanced', icon: KeySquare, href: '/advanced'}
 	];
 
 	  let anchorRail = 'btn hover:preset-tonal aspect-square w-full max-w-[84px] flex flex-col items-center gap-0.5';
