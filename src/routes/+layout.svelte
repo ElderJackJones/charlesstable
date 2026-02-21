@@ -3,8 +3,6 @@
 	import favicon from '$lib/assets/favicon.svg';
   	import { Navigation } from '@skeletonlabs/skeleton-svelte';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
   	// Icons
 	import { House, MessageSquareText, KeySquare } from '@lucide/svelte';
@@ -25,7 +23,7 @@
 	$effect(() => {
 		if ($page.route.id) {
 			const routePath = $page.route.id.replace('/[', '').replace(']', '');
-			// Extract the route segment (home, data, message, settings)
+			// Extract the route segment (home, message, advanced)
 			const segment = routePath.split('/')[1] || 'home';
 			value = segment;
 		}

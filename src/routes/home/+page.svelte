@@ -1,68 +1,72 @@
 <script>
-    import { Rabbit, Pilcrow, Telescope } from "@lucide/svelte";
+	import { Rabbit, Pilcrow, Telescope, Bell, Users } from "@lucide/svelte";
 	import { Avatar } from "@skeletonlabs/skeleton-svelte";
 
-	// Add any reactive variables or functions here
 	let currentYear = new Date().getFullYear();
-	
 </script>
 
 <div class="container mx-auto px-4 py-8 max-w-6xl">
 	<!-- Header Section -->
 	<header class="text-center mb-12">
 		<div class="flex justify-center items-center mb-6">
-			<!-- Bot Avatar/Icon -->
-				<img class="w-20 h-20" src="/icon.png" alt="Icon">
+			<img class="w-20 h-20" src="/icon.png" alt="Charles App Icon">
 		</div>
 		<h1 class="h1 mb-4">Meet Charles</h1>
 		<p class="text-xl text-surface-600-300-token mb-6 max-w-2xl mx-auto">
-			Your automated media referral assistant for the South Carolina Charleston LDS Mission
+			An internal AI-assisted tool that helps social media leaders follow up on media referrals
+			in the South Carolina Charleston Mission
 		</p>
 	</header>
 
 	<!-- Main Content Grid -->
 	<div class="grid lg:grid-cols-2 gap-12 mb-16">
-		<!-- Left Column - What is Charles -->
+		<!-- Left Column -->
 		<div class="card p-8">
 			<h2 class="h2 mb-6">What is Charles?</h2>
 			<div class="space-y-4 text-surface-700-200-token">
 				<p>
-					Charles is an intelligent automated messaging system designed specifically for missionaries 
-					serving in the South Carolina Charleston LDS Mission. He streamlines the process of sharing 
-					media referral information, making it easier than ever to connect with potential investigators.
+					Charles is a future-proofed internal application designed to assist social media leaders
+					in managing and following up on media referrals that have not yet been successfully contacted.
 				</p>
 				<p>
-					With Charles, you can quickly send referral details, contact information, and follow-up 
-					instructions through a simple, guided process that ensures nothing gets missed.
+					Charles does not act on his own. Instead, he works alongside missionaries by identifying
+					uncontacted referrals and helping generate friendly, encouraging messages that a social
+					media leader can review and send.
 				</p>
 			</div>
 		</div>
 
-		<!-- Right Column - How it Works -->
+		<!-- Right Column -->
 		<div class="card p-8">
 			<h2 class="h2 mb-6">How It Works</h2>
 			<div class="space-y-6">
 				<div class="flex items-start space-x-4">
 					<div class="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold">1</div>
 					<div>
-						<h3 class="h4 mb-2">Select Message</h3>
-						<p class="text-surface-700-200-token">Open the app and select the 'Message' option to begin</p>
+						<h3 class="h4 mb-2">Review Referrals</h3>
+						<p class="text-surface-700-200-token">
+							A social media leader opens Charles to review media referrals that still need contact.
+						</p>
 					</div>
 				</div>
-				
+
 				<div class="flex items-start space-x-4">
 					<div class="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold">2</div>
 					<div>
-						<h3 class="h4 mb-2">Follow Prompts</h3>
-						<p class="text-surface-700-200-token">Charles will guide you through each step with clear prompts</p>
+						<h3 class="h4 mb-2">Get AI Assistance</h3>
+						<p class="text-surface-700-200-token">
+							Charles helps draft warm, encouraging messages designed to motivate missionaries to reach out.
+						</p>
 					</div>
 				</div>
-				
+
 				<div class="flex items-start space-x-4">
 					<div class="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold">3</div>
 					<div>
-						<h3 class="h4 mb-2">Send Referral</h3>
-						<p class="text-surface-700-200-token">Your media referral information is automatically formatted and sent</p>
+						<h3 class="h4 mb-2">Human Sends the Message</h3>
+						<p class="text-surface-700-200-token">
+							The social media leader reviews the message and sends it—keeping humans fully in control.
+						</p>
 					</div>
 				</div>
 			</div>
@@ -71,59 +75,64 @@
 
 	<!-- Features Section -->
 	<section class="mb-16">
-		<h2 class="h2 text-center mb-10">Why We Love Charles</h2>
+		<h2 class="h2 text-center mb-10">Why Charles Helps</h2>
 		<div class="grid md:grid-cols-3 gap-8">
 			<div class="card p-6 text-center">
 				<div class="w-16 h-16 bg-secondary-500 rounded-full flex items-center justify-center mx-auto mb-4">
-					<Rabbit size="30"/>
+					<Bell size="30"/>
 				</div>
-				<h3 class="h4 mb-3">Simple & Fast</h3>
-				<p class="text-surface-600-300-token">No complex forms or confusing interfaces. Just follow the prompts and you're done.</p>
+				<h3 class="h4 mb-3">Clear Visibility</h3>
+				<p class="text-surface-600-300-token">
+					Quickly see which media referrals still need follow-up—no guesswork.
+				</p>
 			</div>
 
 			<div class="card p-6 text-center">
 				<div class="w-16 h-16 bg-tertiary-500 rounded-full flex items-center justify-center mx-auto mb-4">
-					<Pilcrow  size="30"/>
+					<Pilcrow size="30"/>
 				</div>
-				<h3 class="h4 mb-3">Automated Formatting</h3>
-				<p class="text-surface-600-300-token">Charles ensures your referral messages are properly formatted and professional.</p>
+				<h3 class="h4 mb-3">Human-Centered AI</h3>
+				<p class="text-surface-600-300-token">
+					Charles assists with wording and encouragement, but missionaries make the final call.
+				</p>
 			</div>
 
 			<div class="card p-6 text-center">
 				<div class="w-16 h-16 bg-success-500 rounded-full flex items-center justify-center mx-auto mb-4">
-					<Telescope size="30"/>
+					<Users size="30"/>
 				</div>
-				<h3 class="h4 mb-3">Mission Focused</h3>
-				<p class="text-surface-600-300-token">Built specifically for Charleston Mission needs with local context in mind.</p>
+				<h3 class="h4 mb-3">Built for Leaders</h3>
+				<p class="text-surface-600-300-token">
+					Designed to support social media leaders without replacing personal judgment or stewardship.
+				</p>
 			</div>
 		</div>
 	</section>
 
-	<!-- Getting Started Section -->
+	<!-- Getting Started -->
 	<section class="text-center mb-16">
 		<div class="card p-12">
-			<h2 class="h2 mb-6">Ready to Get Started?</h2>
+			<h2 class="h2 mb-6">A Helping Hand, Not an Autopilot</h2>
 			<p class="text-xl text-surface-600-300-token max-w-2xl mx-auto">
-				Begin using Charles to streamline your media referral process. Simply select 'Message' 
-				in the app and follow the guided prompts.
+				Charles exists to support missionary efforts—not automate them.
+				Every message is reviewed and sent by a real person, with Charles providing structure,
+				clarity, and encouragement along the way.
 			</p>
-
 		</div>
 	</section>
 
 	<!-- Footer -->
 	<footer class="text-center pt-8 border-t border-surface-300-600-token mb-4">
 		<p class="text-surface-500-400-token">
-			© {currentYear} Charles Bot - South Carolina Charleston Mission
+			© {currentYear} Charles — South Carolina Charleston Mission
 		</p>
-		<p class="text-sm text-surface-400-500-token mt-2 ">
-			Serving missionaries with automated referral assistance
+		<p class="text-sm text-surface-400-500-token mt-2">
+			Internal AI-assisted support for social media leaders
 		</p>
 	</footer>
 </div>
 
 <style>
-	/* Custom styles if needed - Skeleton UI handles most styling */
 	.container {
 		min-height: 100vh;
 	}
