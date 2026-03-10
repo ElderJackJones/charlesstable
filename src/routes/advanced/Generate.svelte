@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Check, OctagonAlert, CircleCheckBig, Copy, ChevronRight } from "@lucide/svelte";
+	import { Check, OctagonAlert, CircleCheckBig, Copy, ChevronRight, LoaderCircle } from "@lucide/svelte";
 	import { Progress } from "@skeletonlabs/skeleton-svelte";
 	import { onMount } from "svelte";
 
@@ -24,6 +24,7 @@
 	let currentMessageIndex = 0;
 	let copied = false;
 	let currentPromptIndex = 0;
+    let promptCopy = false
 
 	let getPersonCount = (zone: Record<string, string[]>) => {
 		return Object.values(zone).reduce((sum, names) => sum + names.length, 0);
@@ -67,12 +68,13 @@
 
 	function copyPrompt(index: number) {
 		navigator.clipboard.writeText(prompts[index].prompt);
-		copied = true;
+		promptCopy = true;
 	}
 
 	function moveToNextPrompt() {
 		if (currentPromptIndex < prompts.length - 1) {
 			currentPromptIndex++;
+            promptCopy = false
 		}
 	}
 
@@ -213,6 +215,7 @@
 								<label class="block text-sm font-semibold mb-2">Prompt to use:</label>
 								<div class="bg-surface-100-900 p-4 rounded-lg flex items-start justify-between gap-4">
 									<p class="text-sm font-mono whitespace-pre-wrap flex-1">{prompt.prompt}</p>
+                                    {#if !promptCopy}
 									<button
 										on:click={() => copyPrompt(index)}
 										class="btn btn-sm preset-filled flex-shrink-0"
@@ -220,6 +223,15 @@
 									>
 										<Copy size={16} />
 									</button>
+                                    {:else}
+                                    <button
+										class="btn btn-sm preset-filled flex-shrink-0"
+										title="Copy prompt"
+                                        disabled
+									>
+										<Check size={16} />
+									</button>
+                                    {/if}
 								</div>
 							</div>
 
