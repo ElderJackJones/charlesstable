@@ -12,7 +12,7 @@
       <Tabs.Indicator />
     </Tabs.List>
     <Tabs.Content value="fetch">
-        <div class="card mt-5 shadow-xl mx-10 bg-surface-200-800 p-6 space-y-2 text-center">
+        <div class="card mt-5 shadow-xl mx-10 bg-warning-200-800 p-6 space-y-2 text-center">
             <h5 class="h5">Advanced Mode</h5>
             <p>This page is for power users and tinkerers. <br />
                 Here you can see the exact prompt Charles would send to an AI model. If you ever want to run it through a different LLM—ChatGPT, Claude, Gemini, or something else—you can copy and paste it directly. <br />
