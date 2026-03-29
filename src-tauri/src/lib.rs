@@ -301,6 +301,7 @@ async fn generate( app_handle: tauri::AppHandle, prompts: Vec<String>, mood: Str
     REQUIRED:
     - Always use inclusive language: 'elders and sisters', 'y'all', 'everyone', or 'the zone'
     - Include the zone name and exact referral count
+    - Mention the average contact time creatively. If it is over 2 hours, playfully urge them to contact referrals faster!
     - Keep it 100% wholesome and mission-appropriate
 
     TONE BY REFERRAL COUNT:
@@ -329,6 +330,7 @@ async fn generate( app_handle: tauri::AppHandle, prompts: Vec<String>, mood: Str
     REQUIRED:
     - Always use inclusive language: 'elders and sisters', 'y'all', or 'the zone'
     - Include the zone name and exact referral count
+    - Mention the average contact time sincerely. If the wait is over 2 hours, gently encourage them to reach out faster to these waiting souls.
     - Use natural mission culture language
 
     TONE BY REFERRAL COUNT:
@@ -433,6 +435,27 @@ fn handle_request(app: &AppHandle, mut request: Request, shutdown_flag: &AtomicB
                 let _ = app.emit("payload", &names);
 
                 return true;
+            }
+            Err(e) => {
+                eprintln!("❌ MsgPack decode error: {e}");
+                let _ = request.respond(Response::from_string("Invalid MsgPack").with_status_code(400));
+                return false;
+            }
+        }
+    } else if request.url() == "/avg" && request.method().as_str() == "POST" {
+        let mut body = Vec::new();
+        if let Err(e) = request.as_reader().read_to_end(&mut body) {
+            eprintln!("Error reading avg body: {e}");
+            let _ = request.respond(Response::from_string("Bad Request").with_status_code(400));
+            return false;
+        }
+        
+        match from_slice::<HashMap<String, String>>(&body) {
+            Ok(avg_map) => {
+                println!("✅ Received avg times: {:?}", avg_map);
+                let _ = request.respond(Response::from_string("OK").with_status_code(200));
+                let _ = app.emit("avg", &avg_map);
+                return false;
             }
             Err(e) => {
                 eprintln!("❌ MsgPack decode error: {e}");

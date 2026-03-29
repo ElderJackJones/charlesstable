@@ -22,6 +22,7 @@
 
 
 	let payload: Payload;
+	let avgTimes: Record<string, string> = {};
 	let payloadFlag = false;
 	let currentStep = 0; // 0: initial, 1: generating, 2: showing messages
 	let messages: Array<{ zone: string; message: string; sent: boolean }> = [];
@@ -45,8 +46,12 @@
 
 	let checkAndUpdatePayload = () => {
 		let middleground = sessionStorage.getItem("payload");
+		let avgStorage = sessionStorage.getItem("avg");
 		if (middleground) {
 			payload = JSON.parse(middleground);
+			if (avgStorage) {
+				avgTimes = JSON.parse(avgStorage);
+			}
 			payloadFlag = false;
 		} else {
 			payloadFlag = true;
@@ -85,7 +90,16 @@
 
 			for (const zone of zones) {
                 const uncontactedZoneNumber = getPersonCount(payload[zone])
-				prompts.push(`The ${zone} zone has ${uncontactedZoneNumber} referrals to contact. Generate a message to get them going!`)
+				let waitTimeInfo = "";
+				
+				// Ensure case insensitivity or format matching if needed. 
+				// Assuming lowercased zone strings or exact map keys. We'll search case-insensitively.
+				const zoneKeyMatch = Object.keys(avgTimes).find(k => k.toLowerCase() === zone.toLowerCase());
+				if (zoneKeyMatch) {
+				    waitTimeInfo = ` The current average referral contact time is ${avgTimes[zoneKeyMatch]}.`;
+				}
+				
+				prompts.push(`The ${zone} zone has ${uncontactedZoneNumber} referrals to contact.${waitTimeInfo} Generate a message to get them going!`)
 			}
 
 			invoke('generate', {prompts, mood: model})

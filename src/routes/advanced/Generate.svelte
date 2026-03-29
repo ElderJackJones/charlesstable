@@ -17,6 +17,7 @@
 	}
 
 	let payload: Payload;
+	let avgTimes: Record<string, string> = {};
 	let payloadFlag = false;
 	let currentStep = 0; // 0: initial, 1: input prompts, 2: showing messages
 	let prompts: PromptData[] = [];
@@ -32,8 +33,12 @@
 
 	let checkAndUpdatePayload = () => {
 		let middleground = sessionStorage.getItem("payload");
+		let avgStorage = sessionStorage.getItem("avg");
 		if (middleground) {
 			payload = JSON.parse(middleground);
+			if (avgStorage) {
+				avgTimes = JSON.parse(avgStorage);
+			}
 			payloadFlag = false;
 		} else {
 			payloadFlag = true;
@@ -53,7 +58,14 @@
 
 		for (const zone of zones) {
 			const uncontactedZoneNumber = getPersonCount(payload[zone]);
-			const prompt = `The ${zone} zone has ${uncontactedZoneNumber} referrals to contact. Generate a message to get them going!`;
+			let waitTimeInfo = "";
+			
+			const zoneKeyMatch = Object.keys(avgTimes).find(k => k.toLowerCase() === zone.toLowerCase());
+			if (zoneKeyMatch) {
+				waitTimeInfo = ` The current average referral contact time is ${avgTimes[zoneKeyMatch]}.`;
+			}
+
+			const prompt = `The ${zone} zone has ${uncontactedZoneNumber} referrals to contact.${waitTimeInfo} Generate a message to get them going!`;
 			prompts.push({
 				zone,
 				prompt,
@@ -212,7 +224,7 @@
 						<div class="space-y-4">
 							<!-- Prompt Display -->
 							<div>
-								<label class="block text-sm font-semibold mb-2">Prompt to use:</label>
+								<p class="block text-sm font-semibold mb-2">Prompt to use:</p>
 								<div class="bg-surface-100-900 p-4 rounded-lg flex items-start justify-between gap-4">
 									<p class="text-sm font-mono whitespace-pre-wrap flex-1">{prompt.prompt}</p>
                                     {#if !promptCopy}
