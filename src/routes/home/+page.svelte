@@ -8,7 +8,9 @@
 	<!-- Header Section -->
 	<header class="text-center mb-12">
 		<div class="flex justify-center items-center mb-6">
-			<img class="w-20 h-20" src="/icon.png" alt="Charles App Icon">
+			<div class="w-20 h-20 rounded-full border-4 border-[#005175] dark:border-[#339acc] flex items-center justify-center bg-[#005175]/8 dark:bg-[#339acc]/10">
+				<span class="text-3xl font-bold text-[#005175] dark:text-[#339acc] select-none leading-none">C</span>
+			</div>
 		</div>
 		<h1 class="text-3xl md:text-4xl font-bold text-[#005175] dark:text-[#339acc] mb-4">Meet Charles</h1>
 		<p class="text-xl text-gray-600 dark:text-gray-300 mb-6 max-w-2xl mx-auto">
