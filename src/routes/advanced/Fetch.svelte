@@ -58,15 +58,15 @@
 <div class="flex flex-col w-full space-y-8 p-2 sm:p-4 md:p-6 text-left">
 	<!-- Header -->
 	<header class="space-y-1">
-		<h2 class="text-2xl font-bold text-primary">Fetch Data</h2>
-		<p class="text-sm text-surface-500">
+		<h2 class="text-2xl font-bold text-[#005175] dark:text-[#339acc]">Fetch Data</h2>
+		<p class="text-sm text-gray-500 dark:text-gray-400">
 			Install the Chrome extension extract online data.
 		</p>
 	</header>
 
 	<!-- Instructions -->
 	<section>
-		<ol class="list-decimal list-inside space-y-2 text-sm leading-relaxed">
+		<ol class="list-decimal list-inside space-y-2 text-sm leading-relaxed text-gray-800 dark:text-gray-200">
 			<li>
 				Add <a href="https://chromewebstore.google.com/detail/charles-connect/ebmkaffdfclekgoaclphjidbefhnidki"
 				on:click={(e) => {
@@ -76,7 +76,7 @@
 					)
 				}}
 				rel="noopener noreferrer"
-				class="text-primary underline hover:text-primary-500"
+				class="text-[#005175] dark:text-[#339acc] underline font-medium hover:text-[#003d58] dark:hover:text-[#52aedd]"
 				
 				>Charles Connect</a> to chrome
 			</li>
@@ -90,7 +90,7 @@
 							e
 						)}
 					rel="noopener noreferrer"
-					class="text-primary underline hover:text-primary-500"
+					class="text-[#005175] dark:text-[#339acc] underline font-medium hover:text-[#003d58] dark:hover:text-[#52aedd]"
 					>referralmanager.churchofjesuschrist.org</a
 				> and log in.
 			</li>
@@ -103,10 +103,10 @@
 
 	<div class="grid w-full justify-items-center">
 		{#if !payloadSaved}
-      	<button class={`w-64 btn rounded-full ${bridgeActive ? "btn preset-filled-success-500" : "preset-filled-tertiary-500"}`} on:click={() => activateBridge(authToken)} disabled={bridgeActive}>{buttonName}</button>
+      	<button class="w-64 px-4 py-2 font-semibold transition-colors shadow-sm rounded-md {bridgeActive ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-[#005175] hover:bg-[#003d58] text-white'}" on:click={() => activateBridge(authToken)} disabled={bridgeActive}>{buttonName}</button>
 		{:else}
-		<div class="w-full card preset-tonal-success grid justify-items-center">
-			<p class="my-4">
+		<div class="w-full bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-md border border-green-200 dark:border-green-800 flex items-center justify-center p-4 gap-2">
+			<p class="font-bold">
 				Data received!
 			</p>
 		</div>

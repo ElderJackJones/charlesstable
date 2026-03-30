@@ -1,23 +1,36 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
 
-@import '@skeletonlabs/skeleton'; 
-@import '@skeletonlabs/skeleton-svelte'; 
-@import '@skeletonlabs/skeleton/themes/concord';
-
-
-.select,
-.input,
-.textarea,
-.ig-input,
-.ig-select {
-	background-color: var(--color-surface-50-950);
-	color: var(--color-surface-950-50);
-}
-
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
   overflow: hidden;
+  @apply bg-gray-50 text-gray-900 font-sans;
 }
+
+@media (prefers-color-scheme: dark) {
+  html, body {
+    @apply bg-gray-900 text-gray-200;
+  }
+}
+
+/* Custom Minimal Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-500;
+}

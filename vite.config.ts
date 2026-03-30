@@ -4,7 +4,6 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
-	optimizeDeps: { include: ['@skeletonlabs/skeleton-svelte', '@skeletonlabs/skeleton', 'lucide-svelte'] },
 	// Tauri expects a fixed port, fail if that port is not available
 	server: {
 		port: 5173,
