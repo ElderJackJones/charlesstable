@@ -92,29 +92,13 @@
 	function finishPrompts() {
 		// Build messages from the prompts and responses
 		messages = [];
-		let count = 0;
 
 		for (const promptData of prompts) {
-			const zone = promptData.zone;
-			let msgInProgress = promptData.userResponse;
-			msgInProgress += "\n";
-			const areas = payload[zone];
-
-			for (const area in areas) {
-				msgInProgress += "\n";
-				msgInProgress += "- " + area.trim() + "\n";
-				const names = areas[area];
-				for (const name of names) {
-					msgInProgress += "	* " + name.trim() + "\n";
-				}
-			}
-
 			messages.push({
-				zone,
-				message: msgInProgress,
+				zone: promptData.zone,
+				message: promptData.userResponse.trim(),
 				sent: false
 			});
-			count++;
 		}
 
 		currentStep = 2;

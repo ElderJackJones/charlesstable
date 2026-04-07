@@ -111,27 +111,6 @@
 					sent: false
 				})
 			})
-			
-			let count = 0
-            for (const zone of zones) {
-				let msgInProgress = ""
-
-				msgInProgress += messages[count].message
-				msgInProgress += "\n"
-				const areas = payload[zone];
-				
-				for (const area in areas) {
-					msgInProgress += "\n"
-					msgInProgress += "- " + area.trim() + "\n"
-					const names = areas[area];
-					for (const name of names) {
-						msgInProgress += "	* " + name.trim() + "\n"
-					}
-				}
-
-				messages[count].message = msgInProgress
-				count++
-			}
 		} else {
 			messages = [];
 			payloadFlag = true;
